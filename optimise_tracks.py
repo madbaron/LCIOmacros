@@ -9,6 +9,7 @@ from optparse import OptionParser
 # parameters
 
 Bfield = 3.56  # T
+doHits = False
 
 parser = OptionParser()
 parser.add_option('-i', '--inFile', help='--inFile Output_REC.slcio',
@@ -122,6 +123,10 @@ z0 = array('d', [0])
 chi2 = array('d', [0])
 ndf = array('i', [0])
 nhits = array('i', [0])
+hits_layer = array('i', [-1, -1, -1, -1, -1, -1, -1, -
+                   1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1])
+hits_detector = array('i', [-1, -1, -1, -1, -1, -1, -
+                      1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1])
 nholes = array('i', [0])
 r_truth = array('d', [0])
 isLLP = array('i', [0])
@@ -136,6 +141,8 @@ tree.Branch("z0", z0, 'var/D')
 tree.Branch("chi2", chi2, 'var/D')
 tree.Branch("ndf", ndf, 'var/I')
 tree.Branch("nhits", nhits, 'var/I')
+tree.Branch("hits_layer", hits_layer, 'myArrint[20]/I')
+tree.Branch("hits_detector", hits_detector, 'myArrint[20]/I')
 tree.Branch("nholes", nholes, 'var/I')
 tree.Branch("r_truth", r_truth, 'var/D')
 tree.Branch("isLLP", isLLP, 'var/I')
@@ -224,6 +231,25 @@ for ievent, event in enumerate(reader):
                         r_truth[0] = rprod
                         isLLP[0] = 0
 
+                        # reset array
+                        for i in range(len(hits_layer)):
+                            hits_layer[i] = -1
+                            hits_detector[i] = -1
+                        
+                        if doHits:
+                            # setting decoder
+                            vertexHitsCollection = event.getCollection('VBTrackerHits')
+                            encoding = vertexHitsCollection.getParameters(
+                            ).getStringVal(EVENT.LCIO.CellIDEncoding)
+                            decoder = UTIL.BitField64(encoding)
+
+                            trkhitsCollection = track.getTrackerHits()
+                            for ihit, hit in enumerate(trkhitsCollection):
+                                cellID = int(hit.getCellID0())
+                                decoder.setValue(cellID)
+                                hits_layer[ihit] = decoder['layer'].value()
+                                hits_detector[ihit] = decoder["system"].value()
+
                         tree.Fill()
 
                     relationCollection = event.getCollection(
@@ -248,6 +274,25 @@ for ievent, event in enumerate(reader):
                         pt_truth[0] = tlv.Perp()
                         r_truth[0] = rprod
                         isLLP[0] = 1
+                        
+                        # reset array
+                        for i in range(len(hits_layer)):
+                            hits_layer[i] = -1
+                            hits_detector[i] = -1
+
+                        if doHits:
+                            # setting decoder
+                            vertexHitsCollection = event.getCollection('VBTrackerHits')
+                            encoding = vertexHitsCollection.getParameters(
+                            ).getStringVal(EVENT.LCIO.CellIDEncoding)
+                            decoder = UTIL.BitField64(encoding)
+
+                            trkhitsCollection = track.getTrackerHits()
+                            for ihit, hit in enumerate(trkhitsCollection):
+                                cellID = int(hit.getCellID0())
+                                decoder.setValue(cellID)
+                                hits_layer[ihit] = decoder['layer'].value()
+                                hits_detector[ihit] = decoder["system"].value()
 
                         tree.Fill()
 
