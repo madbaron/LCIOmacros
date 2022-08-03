@@ -122,10 +122,6 @@ z0 = array('d', [0])
 chi2 = array('d', [0])
 ndf = array('i', [0])
 nhits = array('i', [0])
-hits_layer = array('i', [-1, -1, -1, -1, -1, -1, -1, -
-                   1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1])
-hits_detector = array('i', [-1, -1, -1, -1, -1, -1, -
-                      1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1])
 nholes = array('i', [0])
 r_truth = array('d', [0])
 isLLP = array('i', [0])
@@ -140,8 +136,6 @@ tree.Branch("z0", z0, 'var/D')
 tree.Branch("chi2", chi2, 'var/D')
 tree.Branch("ndf", ndf, 'var/I')
 tree.Branch("nhits", nhits, 'var/I')
-tree.Branch("hits_layer", hits_layer, 'myArrint[20]/I')
-tree.Branch("hits_detector", hits_detector, 'myArrint[20]/I')
 tree.Branch("nholes", nholes, 'var/I')
 tree.Branch("r_truth", r_truth, 'var/D')
 tree.Branch("isLLP", isLLP, 'var/I')
@@ -153,12 +147,6 @@ reader.open(options.inFile)
 
 # loop over all events in the file
 for ievent, event in enumerate(reader):
-
-    # setting decoder
-    vertexHitsCollection = event.getCollection('VBTrackerHits')
-    encoding = vertexHitsCollection.getParameters(
-    ).getStringVal(EVENT.LCIO.CellIDEncoding)
-    decoder = UTIL.BitField64(encoding)
 
     if ievent % 100 == 0:
         print("Processing event " + str(ievent))
@@ -236,13 +224,6 @@ for ievent, event in enumerate(reader):
                         r_truth[0] = rprod
                         isLLP[0] = 0
 
-                        trkhitsCollection = track.getTrackerHits()
-                        for ihit, hit in enumerate(trkhitsCollection):
-                            cellID = int(hit.getCellID0())
-                            decoder.setValue(cellID)
-                            hits_layer[ihit] = decoder['layer'].value()
-                            hits_detector[ihit] = decoder["system"].value()
-
                         tree.Fill()
 
                     relationCollection = event.getCollection(
@@ -267,13 +248,6 @@ for ievent, event in enumerate(reader):
                         pt_truth[0] = tlv.Perp()
                         r_truth[0] = rprod
                         isLLP[0] = 1
-
-                        trkhitsCollection = track.getTrackerHits()
-                        for ihit, hit in enumerate(trkhitsCollection):
-                            cellID = int(hit.getCellID0())
-                            decoder.setValue(cellID)
-                            hits_layer[ihit] = decoder['layer'].value()
-                            hits_detector[ihit] = decoder["system"].value()
 
                         tree.Fill()
 
