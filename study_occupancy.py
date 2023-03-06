@@ -46,7 +46,7 @@ def getBin(detector, side, layer):
         else:
             bin_n = layer+48
 
-    weight = 1./layer_area[layer]
+    weight = 1./layer_area[bin_n]
 
     return bin_n, weight
 
