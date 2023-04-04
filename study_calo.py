@@ -25,6 +25,8 @@ ecal_hit_depth_barrel = TH1D(
 ecal_hit_r_endcap = TH1D('ECAL_endcap', 'ECAL_endcap', 100, 310, 1700)
 hcal_hit_r_barrel = TH1D('HCAL_barrel', 'HCAL_barrel', 100, 1852, 3852)
 hcal_hit_r_endcap = TH1D('HCAL_endcap', 'HCAL_endcap', 100, 307, 3246)
+hcal_hit_depth_barrel = TH1D(
+    'HCAL_barrel_depth', 'HCAL_barrel_depth', 100, 0, 2000)
 
 #########################
 # create a reader and open an LCIO file
@@ -32,52 +34,41 @@ reader = IOIMPL.LCFactory.getInstance().createLCReader()
 reader.open(options.inFile)
 # loop over all events in the file
 
+doTruth = False
+r_min_ecal = 1590
+r_min_hcal = 1852
+
 for ievt, event in enumerate(reader):
 
     if ievt % 100 == 0:
         print("Event " + str(ievt))
 
-    # Check PIDs
-    '''
-    simHitsCollection = event.getCollection("ECalBarrelCollection")
-    for ihit, hit in enumerate(simHitsCollection):
-        mystring = ""
-        for ipart in range(0, hit.getNMCParticles()):
-            mcpart = hit.getParticleCont(ipart)
-            mystring = mystring + " " + str(mcpart.getPDG())
-        print(mystring)
-        print(" ")
-    '''
-    relationCollection = event.getCollection('RelationCaloHit')
-    relation = UTIL.LCRelationNavigator(relationCollection)
-
     # ECAL barrel
-    r_min = 9999999999999
     hitsCollection = event.getCollection("ECALBarrel")
-    for ihit, hit in enumerate(hitsCollection):
-        r = sqrt(hit.getPosition()[0]*hit.getPosition()
-                 [0] + hit.getPosition()[1]*hit.getPosition()[1])
-        if r < r_min:
-            r_min = r
 
-        sim_vec = relation.getRelatedToObjects(hit)
-        print("rel " + str(len(sim_vec)))
-        for simhit in sim_vec:
-            try:
-                mystring = ""
-                for ipart in range(0, simhit.getNMCParticles()):
-                    mcpart = simhit.getPDGCont(ipart)
-                    mystring = mystring + " " + str(mcpart.getPDG())
-                print(mystring)
-            except:
-                print("No related particle found!")
+    if doTruth:
+        relationCollection = event.getCollection('RelationCaloHit')
+        relation = UTIL.LCRelationNavigator(relationCollection)
+        for ihit, hit in enumerate(hitsCollection):
+            sim_vec = relation.getRelatedToObjects(hit)
+            for simhit in sim_vec:
+                try:
+                    mystring = ""
+                    for ipart in range(0, simhit.getNMCParticles()):
+                        mcpart = simhit.getPDGCont(ipart)
+                        mystring = mystring + " " + str(mcpart.getPDG())
+                    print(mystring)
+                except:
+                    pass
 
     for ihit, hit in enumerate(hitsCollection):
         r = sqrt(hit.getPosition()[0]*hit.getPosition()
                  [0] + hit.getPosition()[1]*hit.getPosition()[1])
         ecal_hit_E.Fill(hit.getEnergy())
-        ecal_hit_depth_barrel.Fill(r-r_min)
-        ecal_hit_r_barrel.Fill(r)
+        # [1/cm^2], I hope
+        density_weight = hit.getEnergy()*100./(2.*pi*r*2210.*2.)
+        ecal_hit_depth_barrel.Fill(r-r_min_ecal, density_weight)
+        ecal_hit_r_barrel.Fill(r, density_weight)
         ecal_hit_rz.Fill(hit.getPosition()[2], r)
 
     # ECAL endcap
@@ -90,9 +81,13 @@ for ievt, event in enumerate(reader):
     # HCAL barrel
     hitsCollection = event.getCollection("HCALBarrel")
     for ihit, hit in enumerate(hitsCollection):
+        r = sqrt(hit.getPosition()[0]*hit.getPosition()
+                 [0] + hit.getPosition()[1]*hit.getPosition()[1])
         hcal_hit_E.Fill(hit.getEnergy())
-        hcal_hit_r_barrel.Fill(sqrt(hit.getPosition()[
-            0]*hit.getPosition()[0] + hit.getPosition()[1]*hit.getPosition()[1]))
+        # [1/cm^2], I hope
+        density_weight = hit.getEnergy()*100./(2.*pi*r*2569.*2.)
+        hcal_hit_r_barrel.Fill(r, density_weight)
+        hcal_hit_depth_barrel.Fill(r-r_min_hcal, density_weight)
 
     # HCAL endcap
     hitsCollection = event.getCollection("HCALEndcap")
@@ -113,4 +108,5 @@ ecal_hit_rz.Write()
 ecal_hit_r_endcap.Write()
 hcal_hit_r_barrel.Write()
 hcal_hit_r_endcap.Write()
+hcal_hit_depth_barrel.Write()
 output_file.Close()
