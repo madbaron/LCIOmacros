@@ -29,7 +29,22 @@ h_matchedpfo_type = TH1D('matchedpfo_type', "matchedpfo_type", 3000, 0, 3000)
 h_delta_E = TH1D('delta_E', 'delta_E', 250, -1000, 1000)
 h_delta_E_sumE = TH1D('delta_E_sumE', 'delta_E_sumE', 250, -1000, 1000)
 
-# Low-level hit distributions
+# Low-level sim hit distributions
+h_ECAL_simhit_E = TH1D('ECAL_simhit_E', 'ECAL_simhit_E', 100, 0, 20)  # GeV
+h_ECAL_simhit_layer = TH1D(
+    'ECAL_simhit_layer', 'ECAL_simhit_layer', 100, 0, 100)
+h_ECAL_simhit_layer_ele = TH1D(
+    'ECAL_simhit_layer_ele', 'ECAL_simhit_layer_ele', 100, 0, 100)
+h_ECAL_simhit_layer_gamma = TH1D(
+    'ECAL_simhit_layer_gamma', 'ECAL_simhit_layer_gamma', 100, 0, 100)
+h_ECAL_simhit_layer_other = TH1D(
+    'ECAL_simhit_layer_other', 'ECAL_simhit_layer_other', 100, 0, 100)
+
+h_HCAL_simhit_E = TH1D('HCAL_simhit_E', 'HCAL_simhit_E', 100, 0, 20)  # GeV
+h_HCAL_simhit_layer = TH1D(
+    'HCAL_simhit_layer', 'HCAL_simhit_layer', 100, 0, 100)
+
+# Low-level digitised hit distributions
 h_ECAL_hit_time = TH1D('ECAL_hit_time', 'ECAL_hit_time', 100, -10, 10)  # ns
 h_ECAL_hit_E = TH1D('ECAL_hit_E', 'ECAL_hit_E', 100, 0, 20)  # GeV
 h_ECAL_hit_R = TH1D('ECAL_hit_R', 'ECAL_hit_R', 100, 1700, 4000)  # m
@@ -53,8 +68,11 @@ histos_list = [h_truth_E, h_truth_theta,
                h_Npfo, h_pfo_type, h_matchedpfo_type,
                h_ECAL_hit_time, h_ECAL_hit_E, h_ECAL_hit_R,
                h_HCAL_hit_time, h_HCAL_hit_E, h_HCAL_hit_R,
+               h_ECAL_simhit_E, h_HCAL_simhit_E,
                h_ECAL_sumE, h_HCAL_sumE, h_EMfrac,
-               h_ECAL_hit_layer, h_HCAL_hit_layer
+               h_ECAL_hit_layer, h_HCAL_hit_layer,
+               h_ECAL_simhit_layer, h_ECAL_simhit_layer_ele, h_ECAL_simhit_layer_gamma, h_ECAL_simhit_layer_other,
+               h_HCAL_simhit_layer
                ]
 
 for histo in histos_list:
@@ -132,6 +150,47 @@ for file in to_process:
         h_matchedpfo_type.Fill(matched_type)
         h_delta_E.Fill(matched_E-mcpCollection[0].getEnergy())
 
+        # Fill the simhit-level histos and aggregated energy
+        ECALsimhitCollection = event.getCollection('ECalBarrelCollection')
+        encoding = ECALsimhitCollection.getParameters(
+        ).getStringVal(EVENT.LCIO.CellIDEncoding)
+        decoder = UTIL.BitField64(encoding)
+
+        for simhit in ECALsimhitCollection:
+            cellID = int(simhit.getCellID0())
+            decoder.setValue(cellID)
+            layer = decoder["layer"].value()
+
+            h_ECAL_simhit_E.Fill(simhit.getEnergy())
+            h_ECAL_simhit_layer.Fill(layer, simhit.getEnergy())
+
+            E_ele = 0
+            E_gamma = 0
+            E_other = 0
+            for c in range(0, simhit.getNMCParticles()):
+                if abs(simhit.getPDGCont(c)) == 11:
+                    E_ele = E_ele + simhit.getEnergyCont(c)
+                elif abs(simhit.getPDGCont(c)) == 22:
+                    E_gamma = E_gamma + simhit.getEnergyCont(c)
+                else:
+                    E_other = E_other + simhit.getEnergyCont(c)
+            h_ECAL_simhit_layer_ele.Fill(layer, E_ele)
+            h_ECAL_simhit_layer_gamma.Fill(layer, E_gamma)
+            h_ECAL_simhit_layer_other.Fill(layer, E_other)
+
+        HCALsimhitCollection = event.getCollection('HCalBarrelCollection')
+        encoding = ECALsimhitCollection.getParameters(
+        ).getStringVal(EVENT.LCIO.CellIDEncoding)
+        decoder = UTIL.BitField64(encoding)
+
+        for simhit in HCALsimhitCollection:
+            cellID = int(simhit.getCellID0())
+            decoder.setValue(cellID)
+            layer = decoder["layer"].value()
+
+            h_HCAL_simhit_E.Fill(simhit.getEnergy())
+            h_HCAL_simhit_layer.Fill(layer, simhit.getEnergy())
+
         # Fill the hit-level histos and aggregated energy
         ECAL_sumE = 0
         ECALhitCollection = event.getCollection('ECALBarrel')
@@ -149,7 +208,7 @@ for file in to_process:
             stave = decoder["stave"].value()
             layer = decoder["layer"].value()
             submodule = decoder["submodule"].value()
-            #print(system, side, module, stave, layer, submodule)
+            # print(system, side, module, stave, layer, submodule)
 
             h_ECAL_hit_time.Fill(hit.getTime())
             h_ECAL_hit_E.Fill(hit.getEnergy())
@@ -175,7 +234,7 @@ for file in to_process:
             stave = decoder["stave"].value()
             layer = decoder["layer"].value()
             submodule = decoder["submodule"].value()
-            #print(system, side, module, stave, layer, submodule)
+            # print(system, side, module, stave, layer, submodule)
 
             h_HCAL_hit_time.Fill(hit.getTime())
             h_HCAL_hit_E.Fill(hit.getEnergy())
