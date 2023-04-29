@@ -55,7 +55,8 @@ for histo in histos_list:
 reader = IOIMPL.LCFactory.getInstance().createLCReader()
 reader.open(options.inFile)
 
-Bfield = 3.56  # T
+# Bfield = 3.56  # T
+Bfield = 5  # T
 
 # loop over all events in the file
 for ievt, event in enumerate(reader):
@@ -65,8 +66,8 @@ for ievt, event in enumerate(reader):
 
     pfoCollection = event.getCollection('PandoraPFOs')
     trkCollection = event.getCollection('SiTracks_Refitted')
-    relationCollection = event.getCollection('MCParticle_SiTracks_Refitted')
-    relation = UTIL.LCRelationNavigator(relationCollection)
+    #relationCollection = event.getCollection('MCParticle_SiTracks_Refitted')
+    #relation = UTIL.LCRelationNavigator(relationCollection)
 
     mcpCollection = event.getCollection('MCParticle')
 
@@ -92,12 +93,12 @@ for ievt, event in enumerate(reader):
                     h_truthMu_pT.Fill(tlv.Perp())
                     h_truthMu_theta.Fill(tlv.Theta())
 
-                    tracks = relation.getRelatedToObjects(mcp)
-                    if len(tracks) > 0:
-                        track = tracks[0]
-                        h_trk_Rprod.Fill(rprod)
-                        h_trk_pT.Fill(tlv.Perp())
-                        h_trk_theta.Fill(tlv.Theta())
+                    #tracks = relation.getRelatedToObjects(mcp)
+                    # if len(tracks) > 0:
+                    #    track = tracks[0]
+                    #    h_trk_Rprod.Fill(rprod)
+                    #    h_trk_pT.Fill(tlv.Perp())
+                    #    h_trk_theta.Fill(tlv.Theta())
 
                     for pfo in pfoCollection:
                         if fabs(pfo.getType()) == 13:
