@@ -101,15 +101,16 @@ for ievt, event in enumerate(reader):
         relation = UTIL.LCRelationNavigator(relationCollection)
         for ihit, hit in enumerate(hitsCollection):
             sim_vec = relation.getRelatedToObjects(hit)
+            print(len(sim_vec))
+            '''
             for simhit in sim_vec:
-                try:
-                    mystring = ""
-                    for ipart in range(0, simhit.getNMCParticles()):
-                        mcpart = simhit.getPDGCont(ipart)
-                        mystring = mystring + " " + str(mcpart.getPDG())
-                    print(mystring)
-                except:
-                    pass
+                mystring = ""
+                for ipart in range(0, simhit.getNMCParticles()):
+                    mcpart = simhit.getPDGCont(ipart)
+                    if mcpart != 0:
+                        mystring = mystring + " " + str(mcpart)
+                print(mystring)
+            '''
 
     for ihit, hit in enumerate(hitsCollection):
         r = sqrt(hit.getPosition()[0]*hit.getPosition()
