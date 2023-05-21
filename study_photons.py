@@ -19,14 +19,19 @@ parser.add_option('-o', '--outDir', help='--outDir ./',
 h_truth_E = TH1D('truth_E', 'truth_E', 120, 0., 6000.)
 h_truth_theta = TH1D('truth_theta', 'truth_theta', 100, 0., pi)
 
-h_Npfo = TH1D('Npfo', "Npfo", 10, 0, 10)
-h_pfo_E = TH1D('pfo_E', 'pfo_E', 120, 0., 6000.)
-h_pfo_theta = TH1D('pfo_theta', 'pfo_theta',
-                   100, 0., pi)
+h_Npfo = TH1D('Npfo', "Npfo", 1000, 0, 1000)
+h_EMpfo_E = TH1D('EMpfo_E', 'EMpfo_E', 120, 0., 6000.)
+h_HADpfo_E = TH1D('HADpfo_E', 'HADpfo_E', 120, 0., 6000.)
+h_matchedEMpfo_E = TH1D('matchedEMpfo_E', 'matchedEMpfo_E', 120, 0., 6000.)
+h_matchedEMpfo_theta = TH1D('matchedEMpfo_theta', 'matchedEMpfo_theta',
+                            100, 0., pi)
+h_matchedHADpfo_E = TH1D('matchedHADpfo_E', 'matchedHADpfo_E', 120, 0., 6000.)
+h_matchedHADpfo_theta = TH1D('matchedHADpfo_theta', 'matchedHADpfo_theta',
+                             100, 0., pi)
 h_pfo_type = TH1D('pfo_type', "pfo_type", 3000, 0, 3000)
-h_matchedpfo_type = TH1D('matchedpfo_type', "matchedpfo_type", 3000, 0, 3000)
 
-h_delta_E = TH1D('delta_E', 'delta_E', 250, -1000, 1000)
+h_deltaEM_E = TH1D('deltaEM_E', 'deltaEM_E', 250, -1000, 1000)
+h_deltaHAD_E = TH1D('deltaHAD_E', 'deltaHAD_E', 250, -1000, 1000)
 h_delta_E_sumE = TH1D('delta_E_sumE', 'delta_E_sumE', 250, -1000, 1000)
 
 # Low-level sim hit distributions
@@ -60,16 +65,21 @@ h_sumE = TH1D('sumE', 'sumE', 120, 0, 6000)  # GeV
 h_ECAL_sumE = TH1D('ECAL_sumE', 'ECAL_sumE', 120, 0, 6000)  # GeV
 h_HCAL_sumE = TH1D('HCAL_sumE', 'HCAL_sumE', 120, 0, 6000)  # GeV
 h_EMfrac = TH1D('EMfrac', 'EMfrac', 100, 0, 1)  # GeV
+h_EMfrac_PFO = TH1D('EMfrac_PFO', 'EMfrac_PFO', 100, 0, 1)  # GeV
 
 # Histo list for writing to outputs
 histos_list = [h_truth_E, h_truth_theta,
-               h_pfo_E, h_pfo_theta,
-               h_delta_E, h_delta_E_sumE,
-               h_Npfo, h_pfo_type, h_matchedpfo_type,
+               h_EMpfo_E,
+               h_HADpfo_E,
+               h_matchedEMpfo_E, h_matchedEMpfo_theta,
+               h_matchedHADpfo_E, h_matchedHADpfo_theta,
+               h_deltaEM_E, h_deltaHAD_E, h_delta_E_sumE,
+               h_Npfo, h_pfo_type,
                h_ECAL_hit_time, h_ECAL_hit_E, h_ECAL_hit_R,
                h_HCAL_hit_time, h_HCAL_hit_E, h_HCAL_hit_R,
                h_ECAL_simhit_E, h_HCAL_simhit_E,
-               h_ECAL_sumE, h_HCAL_sumE, h_EMfrac,
+               h_ECAL_sumE, h_HCAL_sumE,
+               h_EMfrac, h_EMfrac_PFO,
                h_ECAL_hit_layer, h_HCAL_hit_layer,
                h_ECAL_simhit_layer, h_ECAL_simhit_layer_ele, h_ECAL_simhit_layer_gamma, h_ECAL_simhit_layer_other,
                h_HCAL_simhit_layer
@@ -95,7 +105,8 @@ for file in to_process:
     # loop over all events in the file
     for ievt, event in enumerate(reader):
 
-        if ievt % 100 == 0:
+        if ievt % 1 == 0:
+            print(" ")
             print("Processing event " + str(ievt))
 
         # Fill the truth-level histos, the first particle is always the gun
@@ -120,12 +131,15 @@ for file in to_process:
         h_Npfo.Fill(len(pfoCollection))
 
         # Match true pfo with closest reco PFO in deltaR
-        matched_E = -1.
-        matched_theta = -1.
-        matched_type = 9999
+        matchedEM_E = -1.
+        matchedEM_theta = -1.
+        matchedHAD_E = -1.
+        matchedHAD_theta = -1.
+        allEM_E = 0.
+        allHAD_E = 0.
 
-        DRthreshold = 3.  # should set this to 3sigma*spatial resolution
-        minDR = 999999.
+        minDREM = 999999.
+        minDRHAD = 999999.
 
         for pfo in pfoCollection:
             h_pfo_type.Fill(abs(pfo.getType()))
@@ -133,24 +147,43 @@ for file in to_process:
             tlv_pfo = TLorentzVector()
             tlv_pfo.SetPxPyPzE(dp3[0], dp3[1], dp3[2], pfo.getEnergy())
 
+            print(pfo.getType())
+
+            if abs(pfo.getType()) == 22:
+                allEM_E = allEM_E + pfo.getEnergy()
+            elif abs(pfo.getType()) == 2112:
+                allHAD_E = allHAD_E + pfo.getEnergy()
+
             dR = tlv_pfo.DeltaR(tlv)
 
-            if dR < DRthreshold:
-                if dR < minDR:
-                    minDR = dR
-                    matched_E = pfo.getEnergy()
-                    matched_theta = tlv_pfo.Theta()
-                    matched_type = abs(pfo.getType())
-                else:
-                    # inefficiency
-                    pass
+            if dR < minDREM and abs(pfo.getType()) == 22:
+                minDREM = dR
+                matchedEM_E = pfo.getEnergy()
+                matchedEM_theta = tlv_pfo.Theta()
+            if dR < minDRHAD and abs(pfo.getType()) == 2112:
+                minDRHAD = dR
+                matchedHAD_E = pfo.getEnergy()
+                matchedHAD_theta = tlv_pfo.Theta()
 
-        h_pfo_E.Fill(matched_E)
-        h_pfo_theta.Fill(matched_theta)
-        h_matchedpfo_type.Fill(matched_type)
-        h_delta_E.Fill(matched_E-mcpCollection[0].getEnergy())
+        print(allEM_E, allHAD_E, matchedEM_E, matchedHAD_E)
+
+        h_EMpfo_E.Fill(allEM_E)
+        h_HADpfo_E.Fill(allHAD_E)
+
+        if matchedEM_E > 0:
+            h_matchedEMpfo_E.Fill(matchedEM_E)
+            h_matchedEMpfo_theta.Fill(matchedEM_theta)
+            h_deltaEM_E.Fill(matchedEM_E-mcpCollection[0].getEnergy())
+        if matchedHAD_E > 0:
+            h_matchedHADpfo_E.Fill(matchedHAD_E)
+            h_matchedHADpfo_theta.Fill(matchedHAD_theta)
+            h_deltaHAD_E.Fill(matchedHAD_E-mcpCollection[0].getEnergy())
+
+        if allHAD_E+allEM_E > 0:
+            h_EMfrac_PFO.Fill(allEM_E/(allHAD_E+allEM_E))
 
         # Fill the simhit-level histos and aggregated energy
+        '''
         ECALsimhitCollection = event.getCollection('ECalBarrelCollection')
         encoding = ECALsimhitCollection.getParameters(
         ).getStringVal(EVENT.LCIO.CellIDEncoding)
@@ -190,9 +223,10 @@ for file in to_process:
 
             h_HCAL_simhit_E.Fill(simhit.getEnergy())
             h_HCAL_simhit_layer.Fill(layer, simhit.getEnergy())
+        '''
 
         # Fill the hit-level histos and aggregated energy
-        ECAL_sumE = 0
+        ECAL_sumE = 0.
         ECALhitCollection = event.getCollection('ECALBarrel')
 
         encoding = ECALhitCollection.getParameters(
@@ -202,23 +236,18 @@ for file in to_process:
         for hit in ECALhitCollection:
             cellID = int(hit.getCellID0())
             decoder.setValue(cellID)
-            system = decoder["system"].value()
-            side = decoder["side"].value()
-            module = decoder["module"].value()
-            stave = decoder["stave"].value()
             layer = decoder["layer"].value()
-            submodule = decoder["submodule"].value()
-            # print(system, side, module, stave, layer, submodule)
 
             h_ECAL_hit_time.Fill(hit.getTime())
             h_ECAL_hit_E.Fill(hit.getEnergy())
             h_ECAL_hit_layer.Fill(layer, hit.getEnergy())
+
             ECAL_sumE = ECAL_sumE + hit.getEnergy()
             pos = hit.getPosition()
             h_ECAL_hit_R.Fill(sqrt(pos[0]*pos[0]+pos[1]*pos[1]))
         h_ECAL_sumE.Fill(ECAL_sumE)
 
-        HCAL_sumE = 0
+        HCAL_sumE = 0.
         HCALhitCollection = event.getCollection('HCALBarrel')
 
         encoding = ECALhitCollection.getParameters(
@@ -228,13 +257,7 @@ for file in to_process:
         for hit in HCALhitCollection:
             cellID = int(hit.getCellID0())
             decoder.setValue(cellID)
-            system = decoder["system"].value()
-            side = decoder["side"].value()
-            module = decoder["module"].value()
-            stave = decoder["stave"].value()
             layer = decoder["layer"].value()
-            submodule = decoder["submodule"].value()
-            # print(system, side, module, stave, layer, submodule)
 
             h_HCAL_hit_time.Fill(hit.getTime())
             h_HCAL_hit_E.Fill(hit.getEnergy())
@@ -243,6 +266,8 @@ for file in to_process:
             pos = hit.getPosition()
             h_HCAL_hit_R.Fill(sqrt(pos[0]*pos[0]+pos[1]*pos[1]))
         h_HCAL_sumE.Fill(HCAL_sumE)
+
+        print(ECAL_sumE, HCAL_sumE)
 
         h_sumE.Fill(ECAL_sumE+HCAL_sumE)
 

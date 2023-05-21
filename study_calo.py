@@ -28,13 +28,63 @@ hcal_hit_r_endcap = TH1D('HCAL_endcap', 'HCAL_endcap', 100, 307, 3246)
 hcal_hit_depth_barrel = TH1D(
     'HCAL_barrel_depth', 'HCAL_barrel_depth', 100, 0, 2000)
 
+# Low-level sim hit distributions
+h_ECAL_simhit_E = TH1D('ECAL_simhit_E', 'ECAL_simhit_E', 100, 0, 20)  # GeV
+h_ECAL_simhit_layer = TH1D(
+    'ECAL_simhit_layer', 'ECAL_simhit_layer', 100, 0, 100)
+h_ECAL_simhit_layer_ele = TH1D(
+    'ECAL_simhit_layer_ele', 'ECAL_simhit_layer_ele', 100, 0, 100)
+h_ECAL_simhit_layer_gamma = TH1D(
+    'ECAL_simhit_layer_gamma', 'ECAL_simhit_layer_gamma', 100, 0, 100)
+h_ECAL_simhit_layer_other = TH1D(
+    'ECAL_simhit_layer_other', 'ECAL_simhit_layer_other', 100, 0, 100)
+
+h_HCAL_simhit_E = TH1D('HCAL_simhit_E', 'HCAL_simhit_E', 100, 0, 20)  # GeV
+h_HCAL_simhit_layer = TH1D(
+    'HCAL_simhit_layer', 'HCAL_simhit_layer', 100, 0, 100)
+
+# Low-level digitised hit distributions
+h_ECAL_hit_time = TH1D('ECAL_hit_time', 'ECAL_hit_time', 100, -10, 10)  # ns
+h_ECAL_hit_E = TH1D('ECAL_hit_E', 'ECAL_hit_E', 100, 0, 20)  # GeV
+h_ECAL_hit_R = TH1D('ECAL_hit_R', 'ECAL_hit_R', 100, 1700, 4000)  # m
+h_ECAL_hit_layer = TH1D('ECAL_hit_layer', 'ECAL_hit_layer', 100, 0, 100)
+
+h_HCAL_hit_time = TH1D('HCAL_hit_time', 'HCAL_hit_time', 100, -10, 10)  # ns
+h_HCAL_hit_E = TH1D('HCAL_hit_E', 'HCAL_hit_E', 100, 0, 20)  # GeV
+h_HCAL_hit_R = TH1D('HCAL_hit_R', 'HCAL_hit_R', 100, 1700, 4000)  # m
+h_HCAL_hit_layer = TH1D('HCAL_hit_layer', 'HCAL_hit_layer', 100, 0, 100)
+
+# Aggregated energy info
+h_sumE = TH1D('sumE', 'sumE', 120, 0, 6000)  # GeV
+h_ECAL_sumE = TH1D('ECAL_sumE', 'ECAL_sumE', 120, 0, 6000)  # GeV
+h_HCAL_sumE = TH1D('HCAL_sumE', 'HCAL_sumE', 120, 0, 6000)  # GeV
+h_EMfrac = TH1D('EMfrac', 'EMfrac', 100, 0, 1)  # GeV
+
+# Histo list for writing to outputs
+histos_list = [h_ECAL_hit_time, h_ECAL_hit_E, h_ECAL_hit_R,
+               h_HCAL_hit_time, h_HCAL_hit_E, h_HCAL_hit_R,
+               h_ECAL_simhit_E, h_HCAL_simhit_E,
+               h_ECAL_sumE, h_HCAL_sumE,
+               h_EMfrac, h_EMfrac_PFO,
+               h_ECAL_hit_layer, h_HCAL_hit_layer,
+               h_ECAL_simhit_layer, h_ECAL_simhit_layer_ele, h_ECAL_simhit_layer_gamma, h_ECAL_simhit_layer_other,
+               h_HCAL_simhit_layer,
+               ecal_hit_E, hcal_hit_E, 
+               ecal_hit_r_barrel, ecal_hit_depth_barrel, ecal_hit_rz, ecal_hit_r_endcap,
+               hcal_hit_r_barrel, hcal_hit_r_endcap, hcal_hit_depth_barrel,
+               ]
+
+for histo in histos_list:
+    histo.SetDirectory(0)
+
+
 #########################
 # create a reader and open an LCIO file
 reader = IOIMPL.LCFactory.getInstance().createLCReader()
 reader.open(options.inFile)
 # loop over all events in the file
 
-doTruth = False
+doTruth = True
 r_min_ecal = 1590
 r_min_hcal = 1852
 
@@ -100,13 +150,6 @@ reader.close()
 
 # write histograms
 output_file = TFile(options.outFile, 'RECREATE')
-ecal_hit_E.Write()
-hcal_hit_E.Write()
-ecal_hit_r_barrel.Write()
-ecal_hit_depth_barrel.Write()
-ecal_hit_rz.Write()
-ecal_hit_r_endcap.Write()
-hcal_hit_r_barrel.Write()
-hcal_hit_r_endcap.Write()
-hcal_hit_depth_barrel.Write()
+for histo in histos_list:
+    histo.Write()
 output_file.Close()
