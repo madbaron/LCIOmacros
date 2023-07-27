@@ -46,7 +46,7 @@ for histo in histos_list:
 reader = IOIMPL.LCFactory.getInstance().createLCReader()
 reader.open(options.inFile)
 
-Bfield = 3.56  # T
+Bfield = 5  # T
 pt_print_cut = 20.
 
 # loop over all events in the file
@@ -117,7 +117,6 @@ for ievt, event in enumerate(reader):
             else:
                 print(" " + str(pt) + " " + str(theta) +
                       " " + str(phi) + " NA " + str(len(hits)))
-    '''
 
     print("PFOs")
     # find the last stops
@@ -130,19 +129,63 @@ for ievt, event in enumerate(reader):
 
         if tlv.Perp() > pt_print_cut:
             print(" " + str(tlv.Perp()) + " " + str(pfo.getType()))
-        '''
+
         if fabs(pfo.getType()) == 13:
             tracks = pfo.getTracks()
             for trk in tracks:
                 pt = 0.3 * Bfield / fabs(trk.getOmega() * 1000.)
                 print("  Trk " + str(pt))
-        '''
+    
+    tracks = event.getCollection('AllTracks')
+
+    for itrack, track in enumerate(tracks):
+        print(0.3 * Bfield / fabs(track.getOmega() * 1000.), TMath.Pi()/2-atan(track.getTanLambda()), track.getNholes())
+    '''
+    
+    # Fill the truth-level histos, the first particle is always the gun
+    tlv_to_match = []
+    mcpCollection = event.getCollection('MCParticle')
+    for mcp in mcpCollection:
+        if fabs(mcp.getPDG()) == 5:
+
+            dp3 = mcp.getMomentum()
+            tlv = TLorentzVector()
+            tlv.SetPxPyPzE(dp3[0], dp3[1], dp3[2], mcp.getEnergy())
+            if mcp.getParents()[0].getPDG() == 23 or mcp.getParents()[0].getPDG()==25:
+                tlv_to_match.append(tlv)
+                print(mcp.getPDG(), mcp.getParents()[0].getPDG(), tlv.Perp())
+
+    print("Truth mass: ", (tlv_to_match[0]+tlv_to_match[1]).M())
+
+    my_matched_tlv = []
+    jetCollection = event.getCollection('JetOut')
+
+    for jet in jetCollection:
+
+        dp3 = jet.getMomentum()
+
+        tlv = TLorentzVector()
+        tlv.SetPxPyPzE(dp3[0], dp3[1], dp3[2], jet.getEnergy())
+
+        if tlv.Perp()>20.:
+            for mcp in tlv_to_match:
+                if tlv.DeltaR(mcp) < 0.3:
+                    my_matched_tlv.append(tlv)
+    
+    if len(my_matched_tlv)>0:
+        my_jet_sum = my_matched_tlv[0]
+        for irec in range(1, len(my_matched_tlv)):
+            my_jet_sum = my_jet_sum + my_matched_tlv[irec]
+        print("Reco mass: ", my_jet_sum.M())
+    else:
+        print("No matched jets")
+
     print(" ")
 
 reader.close()
 
 # write histograms
-output_file = TFile(options.outDir + "ntup_muonPFO.root", 'RECREATE')
-for histo in histos_list:
-    histo.Write()
-output_file.Close()
+#output_file = TFile(options.outDir + "ntup_muonPFO.root", 'RECREATE')
+#for histo in histos_list:
+#    histo.Write()
+#output_file.Close()

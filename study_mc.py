@@ -104,6 +104,8 @@ for ievt, event in enumerate(reader):
                 pt = sqrt(p[0]*p[0] +
                           p[1]*p[1])
                 bquark_pt.Fill(pt)
+            
+            print(part.getPDG(), part.getMass())
 
         result = find_C1_in_decay_chain(mcpCollection)
         nC1 = len(result)
