@@ -69,6 +69,7 @@ h_truth_pT = TH1D('truth_pT', 'truth_pT', len(arrBins_pT)-1, arrBins_pT)
 h_truth_theta = TH1D('truth_theta', 'truth_theta',
                      len(arrBins_theta)-1, arrBins_theta)
 h_truth_phi = TH1D('truth_phi', 'truth_phi', 20, -TMath.Pi(), TMath.Pi())
+h_truth_z0 = TH1D('truth_z0', 'truth_z0', 100, -20., 20.)
 
 h_track_d0 = TH1D('track_d0', 'track_d0', 100, -5., 5.)
 h_track_z0 = TH1D('track_z0', 'track_z0', 100, -20., 20.)
@@ -84,7 +85,7 @@ h_track_Rprod = TH1D('track_Rprod',
                      'track_Rprod', len(arrBins_R)-1, arrBins_R)  # mm
 
 
-histos_list = [h_truth_Rprod, h_truth_pT, h_truth_theta, h_truth_phi, h_track_chi2ndf,
+histos_list = [h_truth_Rprod, h_truth_pT, h_truth_theta, h_truth_phi, h_track_chi2ndf, h_truth_z0,
                h_track_d0, h_track_z0, h_track_pT, h_track_phi, h_track_theta, h_track_nholes, h_track_nhits, h_track_Rprod]
 
 for histo in histos_list:
@@ -203,7 +204,6 @@ for ievent, event in enumerate(reader):
                 pdgID[0] = 0
 
             h_track_d0.Fill(d0[0])
-            h_track_z0.Fill(z0[0])
             h_track_nholes.Fill(holes)
             h_track_nhits.Fill(numhits)
             h_track_chi2ndf.Fill(track.getChi2()/track.getNdf())
@@ -226,12 +226,13 @@ for ievent, event in enumerate(reader):
                     tlv = TLorentzVector()
                     tlv.SetPxPyPzE(dp3[0], dp3[1], dp3[2], mcp.getEnergy())
 
-                    if tlv.Perp() > 1:
+                    if tlv.Perp() > 0.5:
 
                         h_truth_Rprod.Fill(rprod)
                         h_truth_pT.Fill(tlv.Perp())
                         h_truth_phi.Fill(tlv.Phi())
                         h_truth_theta.Fill(tlv.Theta())
+                        h_truth_z0.Fill(vx[2])
 
                         tracks = relation.getRelatedToObjects(mcp)
                         for track in tracks:
@@ -239,9 +240,39 @@ for ievent, event in enumerate(reader):
                             h_track_pT.Fill(tlv.Perp())
                             h_track_phi.Fill(tlv.Phi())
                             h_track_theta.Fill(tlv.Theta())
+                            h_track_z0.Fill(vx[2])
 
     except:
         print("No relation collection!")
+
+        # filling standard tracks
+        tracks = event.getCollection('SiTracks_Refitted')
+
+        for itrack, track in enumerate(tracks):
+            pt[0] = 0.3 * Bfield / fabs(track.getOmega() * 1000.)
+            phi[0] = track.getPhi()
+            theta[0] = TMath.Pi()/2-atan(track.getTanLambda())
+            d0[0] = track.getD0()
+            z0[0] = track.getZ0()
+            sigma_d0[0] = track.getCovMatrix()[0]
+            sigma_z0[0] = track.getCovMatrix()[9]
+            omega[0] = track.getOmega()
+            chi2[0] = track.getChi2()
+            ndf[0] = track.getNdf()
+
+            hits = track.getTrackerHits()
+            numhits = len(hits)
+            holes = int(track.getNholes())
+            nhits[0] = numhits
+            nholes[0] = holes
+            isLLP[0] = 0
+
+            h_track_d0.Fill(d0[0])
+            h_track_nholes.Fill(holes)
+            h_track_nhits.Fill(numhits)
+            h_track_chi2ndf.Fill(track.getChi2()/track.getNdf())
+
+            tree.Fill()
 
 reader.close()
 

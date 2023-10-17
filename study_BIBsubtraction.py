@@ -7,6 +7,11 @@ from array import array
 import os
 import fnmatch
 
+r_min_ECAL = 1771.
+r_min_HCAL = 2038.1
+cell_depth_ECAL = 5.35
+cell_depth_HCAL = 26.5
+
 #########################
 parser = OptionParser()
 parser.add_option('-i', '--inFile', help='--inFile Output_REC.slcio',
@@ -24,12 +29,14 @@ arrBins_E = array('d', (0., 5., 10., 15., 20., 25., 50.,
 h_ECAL_hit_time = TH1D('ECAL_hit_time', 'ECAL_hit_time', 100, -10, 10)  # ns
 h_ECAL_hit_E = TH1D('ECAL_hit_E', 'ECAL_hit_E', 100, 0, 20)  # GeV
 h_ECAL_hit_R = TH1D('ECAL_hit_R', 'ECAL_hit_R', 100, 1700, 4000)  # m
-h_ECAL_hit_layer = TH1D('ECAL_hit_layer', 'ECAL_hit_layer', 100, 0, 100)
+h_ECAL_hit_layer_barrel = TH1D('ECAL_hit_layer_barrel', 'ECAL_hit_layer_barrel', 100, 0, 100)
+h_ECAL_hit_layer_endcap = TH1D('ECAL_hit_layer_endcap', 'ECAL_hit_layer_endcap', 100, 0, 100)
 
 h_HCAL_hit_time = TH1D('HCAL_hit_time', 'HCAL_hit_time', 100, -10, 10)  # ns
 h_HCAL_hit_E = TH1D('HCAL_hit_E', 'HCAL_hit_E', 100, 0, 20)  # GeV
 h_HCAL_hit_R = TH1D('HCAL_hit_R', 'HCAL_hit_R', 100, 1700, 4000)  # m
-h_HCAL_hit_layer = TH1D('HCAL_hit_layer', 'HCAL_hit_layer', 100, 0, 100)
+h_HCAL_hit_layer_barrel = TH1D('HCAL_hit_layer_barrel', 'HCAL_hit_layer_barrel', 100, 0, 100)
+h_HCAL_hit_layer_endcap = TH1D('HCAL_hit_layer_endcap', 'HCAL_hit_layer_endcap', 100, 0, 100)
 
 # Aggregated energy info
 h_sumE = TH1D('sumE', 'sumE', 120, 0, 6000)  # GeV
@@ -43,7 +50,8 @@ histos_list = [
     h_HCAL_hit_time, h_HCAL_hit_E, h_HCAL_hit_R,
     h_ECAL_sumE, h_HCAL_sumE,
     h_EMfrac,
-    h_ECAL_hit_layer, h_HCAL_hit_layer,
+    h_ECAL_hit_layer_barrel, h_HCAL_hit_layer_barrel,
+    h_ECAL_hit_layer_endcap, h_HCAL_hit_layer_endcap
 ]
 
 for histo in histos_list:
@@ -119,7 +127,15 @@ for file in to_process:
 
                 h_ECAL_hit_time.Fill(hit.getTime())
                 h_ECAL_hit_E.Fill(hit.getEnergy())
-                h_ECAL_hit_layer.Fill(layer, hit.getEnergy())
+                
+                denominator = 1.
+                if coll == "EcalBarrelCollectionRec":
+                    radius = r_min_ECAL + layer*cell_depth_ECAL
+                    denominator = (2.*pi*radius*2574.5*2.)
+                    h_ECAL_hit_layer_barrel.Fill(layer, hit.getEnergy()/denominator)
+                else:
+                    denominator = ((pi*1770.9*1770.9)-(pi*310.*310.))
+                    h_ECAL_hit_layer_endcap.Fill(layer, hit.getEnergy()/denominator)
 
                 ECAL_sumE = ECAL_sumE + hit.getEnergy()
                 pos = hit.getPosition()
@@ -158,7 +174,16 @@ for file in to_process:
 
                 h_HCAL_hit_time.Fill(hit.getTime())
                 h_HCAL_hit_E.Fill(hit.getEnergy())
-                h_HCAL_hit_layer.Fill(layer, hit.getEnergy())
+                
+                denominator = 1.
+                if coll == "HcalBarrelsCollectionRec":
+                    radius = r_min_HCAL + layer*cell_depth_HCAL
+                    denominator = (2.*pi*radius*2574.5*2.)
+                    h_HCAL_hit_layer_barrel.Fill(layer, hit.getEnergy()/denominator)
+                else:
+                    denominator = ((pi*4026.1*4026.1)-(pi*307.*307.))
+                    h_HCAL_hit_layer_endcap.Fill(layer, hit.getEnergy()/denominator)
+
                 HCAL_sumE = HCAL_sumE + hit.getEnergy()
                 pos = hit.getPosition()
                 h_HCAL_hit_R.Fill(sqrt(pos[0]*pos[0]+pos[1]*pos[1]))
