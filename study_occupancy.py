@@ -5,6 +5,8 @@ from math import *
 from optparse import OptionParser
 from itertools import combinations
 
+is_ten_TeV = 3
+
 
 def getBin(detector, side, layer):
     """
@@ -12,7 +14,18 @@ def getBin(detector, side, layer):
     """
     weight = 1.
 
+    '''
     layer_area = [270.40, 270.40, 448.50, 448.50, 655.20, 655.20, 904.80, 904.80,  # VXD barrel
+                  389.00, 389.00, 378.96, 378.96, 364.36, 364.36, 312.48, 312.48,  # VXD endcaps
+                  389.00, 389.00, 378.96, 378.96, 364.36, 364.36, 312.48, 312.48,
+                  8117.85, 22034.16, 51678.81,  # IT barrel
+                  6639.65, 10611.59, 10078.04, 9900.19, 9307.37, 8595.98, 8299.56,  # IT endcaps
+                  6639.65, 10611.59, 10078.04, 9900.19, 9307.37, 8595.98, 8299.56,
+                  140032.91, 194828.39, 249623.88,  # OT barrel
+                  69545.45, 69545.45, 69545.45, 69545.45,  # OT endcaps
+                  69545.45, 69545.45, 69545.45, 69545.45]
+    '''
+    layer_area = [270.40, 270.40, 448.50, 655.20, 904.80,  # VXD barrel
                   389.00, 389.00, 378.96, 378.96, 364.36, 364.36, 312.48, 312.48,  # VXD endcaps
                   389.00, 389.00, 378.96, 378.96, 364.36, 364.36, 312.48, 312.48,
                   8117.85, 22034.16, 51678.81,  # IT barrel
@@ -25,26 +38,33 @@ def getBin(detector, side, layer):
     bin_n = 0
 
     if detector == 1:
-        bin_n = layer
+        if layer < 3:
+            bin_n = layer
+        elif layer == 4:
+            bin_n = 3
+        elif layer == 6:
+            bin_n = 4
+        elif layer == 8:
+            bin_n = 5
     elif detector == 2:
         if side > 0:
-            bin_n = layer+8
+            bin_n = layer+8-is_ten_TeV
         else:
-            bin_n = layer+16
+            bin_n = layer+16-is_ten_TeV
     elif detector == 3:
-        bin_n = layer+24
+        bin_n = layer+24-is_ten_TeV
     elif detector == 4:
         if side > 0:
-            bin_n = layer+27
+            bin_n = layer+27-is_ten_TeV
         else:
-            bin_n = layer+34
+            bin_n = layer+34-is_ten_TeV
     elif detector == 5:
-        bin_n = layer+41
+        bin_n = layer+41-is_ten_TeV
     elif detector == 6:
         if side > 0:
-            bin_n = layer+44
+            bin_n = layer+44-is_ten_TeV
         else:
-            bin_n = layer+48
+            bin_n = layer+48-is_ten_TeV
 
     weight = 1./layer_area[bin_n]
 
@@ -61,9 +81,11 @@ parser.add_option('-o', '--outFile', help='--outFile histos_occupancy.root',
 (options, args) = parser.parse_args()
 #########################
 
-h_nhits_nowei = TH1D('h_nhits_nowei', 'h_nhits_nowei', 52, 0., 52)
-h_nhits = TH1D('h_nhits', 'h_nhits', 52, 0., 52)
-h_ntimehits = TH1D('h_ntimehits', 'h_ntimehits', 52, 0., 52)
+h_nhits_nowei = TH1D('h_nhits_nowei', 'h_nhits_nowei',
+                     52-is_ten_TeV, 0., 52-is_ten_TeV)
+h_nhits = TH1D('h_nhits', 'h_nhits', 52-is_ten_TeV, 0., 52-is_ten_TeV)
+h_ntimehits = TH1D('h_ntimehits', 'h_ntimehits',
+                   52-is_ten_TeV, 0., 52-is_ten_TeV)
 
 
 #########################

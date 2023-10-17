@@ -17,7 +17,8 @@ parser.add_option('-o', '--outDir', help='--outDir ./',
 
 arrBins_theta = array('d', (0., 30.*TMath.Pi()/180., 40.*TMath.Pi()/180., 50.*TMath.Pi()/180., 60.*TMath.Pi()/180., 70.*TMath.Pi()/180.,
                             90.*TMath.Pi()/180., 110.*TMath.Pi()/180., 120.*TMath.Pi()/180., 130.*TMath.Pi()/180., 140.*TMath.Pi()/180., 150.*TMath.Pi()/180., TMath.Pi()))
-arrBins_E = array('d', (0., 5., 10., 15., 20., 25., 50., 100., 250., 500., 1000., 2500., 5000.))
+arrBins_E = array('d', (0., 5., 10., 15., 20., 25., 50.,
+                  100., 250., 500., 1000., 2500., 5000.))
 
 # Low-level digitised hit distributions
 h_ECAL_hit_time = TH1D('ECAL_hit_time', 'ECAL_hit_time', 100, -10, 10)  # ns
@@ -38,12 +39,12 @@ h_EMfrac = TH1D('EMfrac', 'EMfrac', 100, 0, 1)
 
 # Histo list for writing to outputs
 histos_list = [
-               h_ECAL_hit_time, h_ECAL_hit_E, h_ECAL_hit_R,
-               h_HCAL_hit_time, h_HCAL_hit_E, h_HCAL_hit_R,
-               h_ECAL_sumE, h_HCAL_sumE,
-               h_EMfrac, 
-               h_ECAL_hit_layer, h_HCAL_hit_layer,
-               ]
+    h_ECAL_hit_time, h_ECAL_hit_E, h_ECAL_hit_R,
+    h_HCAL_hit_time, h_HCAL_hit_E, h_HCAL_hit_R,
+    h_ECAL_sumE, h_HCAL_sumE,
+    h_EMfrac,
+    h_ECAL_hit_layer, h_HCAL_hit_layer,
+]
 
 for histo in histos_list:
     histo.SetDirectory(0)
@@ -62,6 +63,18 @@ hit_tree.Branch("theta", theta_hit, 'var/D')
 hit_tree.Branch("time", time_hit, 'var/D')
 hit_tree.Branch("layer", layer_hit, 'var/I')
 hit_tree.Branch("isECAL", isECAL_hit, 'var/I')
+
+simhit_tree = TTree("simhit_tree", "hit_tree")
+E_simhit = array('d', [0])
+phi_simhit = array('d', [0])
+theta_simhit = array('d', [0])
+layer_simhit = array('i', [0])
+isECAL_simhit = array('i', [0])
+simhit_tree.Branch("E",  E_simhit,  'var/D')
+simhit_tree.Branch("phi", phi_simhit, 'var/D')
+simhit_tree.Branch("theta", theta_simhit, 'var/D')
+simhit_tree.Branch("layer", layer_simhit, 'var/I')
+simhit_tree.Branch("isECAL", isECAL_simhit, 'var/I')
 
 to_process = []
 
@@ -86,9 +99,14 @@ for file in to_process:
 
         # Fill the hit-level histos and aggregated energy
         ECAL_sumE = 0.
-        ecal_coll = ['EcalBarrelCollectionRec','EcalEndcapCollectionRec']
+        ecal_coll = ['EcalBarrelCollectionRec', 'EcalEndcapCollectionRec']
         for coll in ecal_coll:
-            ECALhitCollection = event.getCollection(coll)
+
+            try:
+                ECALhitCollection = event.getCollection(coll)
+            except:
+                print("No ", coll, " found!")
+                continue
 
             encoding = ECALhitCollection.getParameters(
             ).getStringVal(EVENT.LCIO.CellIDEncoding)
@@ -107,7 +125,7 @@ for file in to_process:
                 pos = hit.getPosition()
                 h_ECAL_hit_R.Fill(sqrt(pos[0]*pos[0]+pos[1]*pos[1]))
 
-                posvec =  TVector3(pos[0], pos[1], pos[2])
+                posvec = TVector3(pos[0], pos[1], pos[2])
 
                 E_hit[0] = hit.getEnergy()
                 phi_hit[0] = posvec.Phi()
@@ -120,9 +138,14 @@ for file in to_process:
             h_ECAL_sumE.Fill(ECAL_sumE)
 
         HCAL_sumE = 0.
-        hcal_coll = ['HcalBarrelsCollectionRec','HcalEndcapsCollectionRec']
+        hcal_coll = ['HcalBarrelsCollectionRec', 'HcalEndcapsCollectionRec']
         for coll in hcal_coll:
-            HCALhitCollection = event.getCollection(coll)
+
+            try:
+                HCALhitCollection = event.getCollection(coll)
+            except:
+                print("No ", coll, " found!")
+                continue
 
             encoding = HCALhitCollection.getParameters(
             ).getStringVal(EVENT.LCIO.CellIDEncoding)
@@ -140,7 +163,7 @@ for file in to_process:
                 pos = hit.getPosition()
                 h_HCAL_hit_R.Fill(sqrt(pos[0]*pos[0]+pos[1]*pos[1]))
 
-                posvec =  TVector3(pos[0], pos[1], pos[2])
+                posvec = TVector3(pos[0], pos[1], pos[2])
 
                 E_hit[0] = hit.getEnergy()
                 phi_hit[0] = posvec.Phi()
@@ -161,6 +184,63 @@ for file in to_process:
         else:
             h_EMfrac.Fill(0)
 
+        # SimHit
+        ecal_coll = ['ECalBarrelCollection', 'ECalEndcapCollection']
+        for coll in ecal_coll:
+
+            try:
+                simECALhitCollection = event.getCollection(coll)
+            except:
+                print("No ", coll, " found!")
+                continue
+
+            encoding = simECALhitCollection.getParameters(
+            ).getStringVal(EVENT.LCIO.CellIDEncoding)
+            decoder = UTIL.BitField64(encoding)
+
+            for hit in simECALhitCollection:
+                cellID = int(hit.getCellID0())
+                decoder.setValue(cellID)
+                layer = decoder["layer"].value()
+
+                pos = hit.getPosition()
+                posvec = TVector3(pos[0], pos[1], pos[2])
+
+                E_simhit[0] = hit.getEnergy()
+                phi_simhit[0] = posvec.Phi()
+                theta_simhit[0] = posvec.Theta()
+                layer_simhit[0] = layer
+                isECAL_simhit[0] = 1
+                simhit_tree.Fill()
+
+        hcal_coll = ['HCalBarrelCollection', 'HCalEndcapCollection']
+        for coll in hcal_coll:
+
+            try:
+                simHCALhitCollection = event.getCollection(coll)
+            except:
+                print("No ", coll, " found!")
+                continue
+
+            encoding = simHCALhitCollection.getParameters(
+            ).getStringVal(EVENT.LCIO.CellIDEncoding)
+            decoder = UTIL.BitField64(encoding)
+
+            for hit in simHCALhitCollection:
+                cellID = int(hit.getCellID0())
+                decoder.setValue(cellID)
+                layer = decoder["layer"].value()
+
+                pos = hit.getPosition()
+                posvec = TVector3(pos[0], pos[1], pos[2])
+
+                E_simhit[0] = hit.getEnergy()
+                phi_simhit[0] = posvec.Phi()
+                theta_simhit[0] = posvec.Theta()
+                layer_simhit[0] = layer
+                isECAL_simhit[0] = 0
+                simhit_tree.Fill()
+
     reader.close()
 
 # write histograms
@@ -168,4 +248,5 @@ output_file = TFile(options.outDir + "ntup_BIBsub.root", 'RECREATE')
 for histo in histos_list:
     histo.Write()
 hit_tree.Write()
+simhit_tree.Write()
 output_file.Close()

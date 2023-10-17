@@ -28,7 +28,7 @@ for ievt, event in enumerate(reader):
         print("Processing event " + str(ievt))
 
     # find the last stops
-    jetCollection = event.getCollection('Jets')
+    jetCollection = event.getCollection('JetOut')
     for jet in jetCollection:
         dp3 = jet.getMomentum()
 
@@ -36,12 +36,13 @@ for ievt, event in enumerate(reader):
         tlv.SetPxPyPzE(dp3[0], dp3[1], dp3[2], jet.getEnergy())
 
         print(str(tlv.Perp()) + " " + str(len(jet.getParticles())))
+
         for constituent in jet.getParticles():
             ids = constituent.getParticleIDs()
-            print(str(constituent.getCharge()) + " " +
-                  str(len(constituent.getTracks())))
+            print(constituent.getEnergy(), constituent.getCharge(),
+                  len(constituent.getTracks()))
 
-            if len(ids) > 0:
-                print(str(ids[0]))
+            # if len(ids) > 0:
+            #    print(str(ids[0]))
 
 reader.close()
