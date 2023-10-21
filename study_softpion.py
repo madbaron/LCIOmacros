@@ -11,9 +11,14 @@ import fnmatch
 parser = OptionParser()
 parser.add_option('-i', '--inFile', help='--inFile Output_REC.slcio',
                   type=str, default='Output_REC.slcio')
-parser.add_option('-o', '--outDir', help='--outDir ./',
-                  type=str, default='./')
+parser.add_option('-o', '--outFile', help='--outFile histos_softpion.root',
+                  type=str, default='histos_softpion.root')
+parser.add_option('-t', '--doTree', dest='doTree', help='Fill BIB tree', action='store_true', default=False)
 (options, args) = parser.parse_args()
+
+Bfield = 5  # T
+if "3TeV" in options.inFile:
+    Bfield = 3.57  # T
 
 # declare histograms
 arrBins_pT = array('d', (0., 0.1, 0.2, 0.3, 0.4, 0.5, 1., 2., 3.))
@@ -23,6 +28,8 @@ arrBins_theta = array('d', (0, 10.*TMath.Pi()/180.,20.*TMath.Pi()/180.,30.*TMath
 h_truth_pT = TH1D('truth_pT', 'truth_pT', len(arrBins_pT)-1, arrBins_pT)
 h_truth_theta = TH1D('truth_theta', 'truth_theta',
                      len(arrBins_theta)-1, arrBins_theta)
+h_truth_d0 = TH1D('truth_d0', 'truth_d0', 100, -5., 5.)
+h_truth_z0 = TH1D('truth_z0', 'truth_z0', 100, -20., 20.)
 
 h_track_d0 = TH1D('track_d0', 'track_d0', 100, -5., 5.)
 h_track_z0 = TH1D('track_z0', 'track_z0', 100, -20., 20.)
@@ -50,7 +57,7 @@ h_track_theta_pT_highR = TH2D(
     'h_track_theta_pT_highR', 'h_track_theta_pT_highR', len(arrBins_theta)-1, arrBins_theta, len(arrBins_pT)-1, arrBins_pT)
 
 
-histos_list = [h_truth_pT, h_truth_theta, h_track_d0, h_track_z0, h_track_Nhits, h_track_pT, h_track_theta, h_bg_d0, h_bg_z0, h_bg_Nhits, h_bg_pT, h_bg_theta, h_bg_Nholes, h_truth_theta_pT, h_track_theta_pT, h_truth_theta_pT_highR, h_track_theta_pT_highR]
+histos_list = [h_truth_pT, h_truth_theta, h_truth_d0, h_truth_z0, h_track_d0, h_track_z0, h_track_Nhits, h_track_pT, h_track_theta, h_bg_d0, h_bg_z0, h_bg_Nhits, h_bg_pT, h_bg_theta, h_bg_Nholes, h_truth_theta_pT, h_track_theta_pT, h_truth_theta_pT_highR, h_track_theta_pT_highR]
 
 for histo in histos_list:
     histo.SetDirectory(0)
@@ -63,33 +70,39 @@ theta_BIB = array('d', [0])
 d0_BIB = array('d', [0])
 z0_BIB = array('d', [0])
 Nhits_BIB = array('i', [0])
-Nholes_BIB = array('i', [0])
+charge_BIB = array('i', [0])
 BIB_tree.Branch("pT",  pt_BIB,  'var/D')
 BIB_tree.Branch("phi", phi_BIB, 'var/D')
 BIB_tree.Branch("theta", theta_BIB, 'var/D')
 BIB_tree.Branch("d0", d0_BIB, 'var/D')
 BIB_tree.Branch("z0", z0_BIB, 'var/D')
 BIB_tree.Branch("Nhits", Nhits_BIB, 'var/I')
-BIB_tree.Branch("Nholes", Nholes_BIB, 'var/I')
+BIB_tree.Branch("charge", charge_BIB, 'var/I')
 
 # create a reader and open an LCIO file
 reader = IOIMPL.LCFactory.getInstance().createLCReader()
 reader.open(options.inFile)
 
-Bfield = 3.57  # T
+print("Bfield ", Bfield)
+if options.doTree:
+    print("Filling bg track tree")
 
 # loop over all events in the file
 for ievt, event in enumerate(reader):
 
-    if ievt % 100 == 0:
-        print(" ")
-        print("Processing event " + str(ievt))
-
     #print("MCtruth pions (pT, theta)")
     mcpCollection = event.getCollection('MCParticle')
-    relationCollection = event.getCollection('MCParticle_SiTracks_Refitted')
+    relationCollection = event.getCollection('MCParticle_SiTracks')
     relation = UTIL.LCRelationNavigator(relationCollection)
+    tracks = event.getCollection('SiTracks')
 
+    if ievt % 100 == 0:
+        print(" ")
+        print("Processing event ", ievt)
+        print("MCP:", len(mcpCollection))
+        print("Tracks:", len(tracks))
+        print("Now loop on MCP")
+        
     for mcp in mcpCollection:
         if fabs(mcp.getPDG())==211:
             dp3 = mcp.getMomentum()
@@ -103,19 +116,27 @@ for ievt, event in enumerate(reader):
 
             vpos = mcp.getVertex()
             r = sqrt(vpos[0]*vpos[0]+vpos[1]*vpos[1])
-            if r > 3.1:
+
+            h_truth_d0.Fill(r)
+            h_truth_z0.Fill(vpos[2])
+
+            if r > 31.:
                 h_truth_theta_pT_highR.Fill(tlv.Theta(),tlv.Perp())
 
-            tracks = relation.getRelatedToObjects(mcp)
-            for track in tracks:
-                h_track_d0.Fill(track.getD0())
-                h_track_z0.Fill(track.getZ0())
-                h_track_Nhits.Fill(len(track.getTrackerHits()))
-                h_track_pT.Fill(tlv.Perp())
-                h_track_theta.Fill(tlv.Theta())
-                h_track_theta_pT.Fill(tlv.Theta(),tlv.Perp())
-                if r > 3.1:
-                    h_track_theta_pT_highR.Fill(tlv.Theta(),tlv.Perp())
+            rel_tracks = relation.getRelatedToObjects(mcp)
+            for track in rel_tracks:
+
+                Nhits = len(track.getTrackerHits())
+                h_track_Nhits.Fill(Nhits)
+
+                if Nhits>7:
+                    h_track_d0.Fill(track.getD0())
+                    h_track_z0.Fill(track.getZ0())
+                    h_track_pT.Fill(tlv.Perp())
+                    h_track_theta.Fill(tlv.Theta())
+                    h_track_theta_pT.Fill(tlv.Theta(),tlv.Perp())
+                    if r > 31.:
+                        h_track_theta_pT_highR.Fill(tlv.Theta(),tlv.Perp())
 
 
     #print("PFOs (PDG, pT, theta)")
@@ -127,35 +148,55 @@ for ievt, event in enumerate(reader):
     #
     #    print(pfo.getType(), tlv.Perp(), tlv.Theta())
 
+    if ievt % 100 == 0:
+        print("Now loop on tracks")
+
     #print("Tracks (pT, theta, d0, z0, Nhits)")
-    tracks = event.getCollection('SiTracks_Refitted')
     for itrack, track in enumerate(tracks):
+        #print(0.3 * Bfield / fabs(track.getOmega() * 1000.), TMath.Pi()/2-atan(track.getTanLambda()), track.getD0(), track.getZ0(), len(track.getTrackerHits()))
+
+        pdgId = 0
         try:
             mcp = relation.getRelatedFromObjects(track)[0]
-            #print(0.3 * Bfield / fabs(track.getOmega() * 1000.), TMath.Pi()/2-atan(track.getTanLambda()), track.getD0(), track.getZ0(), len(track.getTrackerHits()))
-            #print(" matched to ", mcp.getPDG())
+            pdgId = mcp.getPDG()
         except:
-            h_bg_d0.Fill(track.getD0())
-            h_bg_z0.Fill(track.getZ0())
-            h_bg_Nhits.Fill(len(track.getTrackerHits()))
-            h_bg_Nholes.Fill(track.getNholes())
-            h_bg_pT.Fill(0.3 * Bfield / fabs(track.getOmega() * 1000.))
-            h_bg_theta.Fill(TMath.Pi()/2-atan(track.getTanLambda()))
+            pdgId = 0
+            
+        if fabs(pdgId)==211:
+            pass
+        else:
+            Nhits = len(track.getTrackerHits())
+            h_bg_Nhits.Fill(Nhits)
+            
+            if Nhits>7:
+                pT = 0.3 * Bfield / fabs(track.getOmega() * 1000.)
 
-            pt_BIB[0] = 0.3 * Bfield / fabs(track.getOmega() * 1000.)
-            phi_BIB[0] = track.getPhi()
-            theta_BIB[0] = TMath.Pi()/2-atan(track.getTanLambda())
-            d0_BIB[0] = track.getD0()
-            z0_BIB[0] = track.getZ0()
-            Nhits_BIB[0] = len(track.getTrackerHits())
-            Nholes_BIB[0] = track.getNholes()
-            BIB_tree.Fill()
+                if pT < 3.:
+                    h_bg_d0.Fill(track.getD0())
+                    h_bg_z0.Fill(track.getZ0())
+                    h_bg_Nholes.Fill(track.getNholes())
+                    h_bg_pT.Fill(pT)
+                    h_bg_theta.Fill(TMath.Pi()/2-atan(track.getTanLambda()))
+
+                    if options.doTree:
+                        pt_BIB[0] = pT
+                        phi_BIB[0] = track.getPhi()
+                        theta_BIB[0] = TMath.Pi()/2-atan(track.getTanLambda())
+                        d0_BIB[0] = track.getD0()
+                        z0_BIB[0] = track.getZ0()
+                        Nhits_BIB[0] = len(track.getTrackerHits())
+                        charge_BIB[0] = int(copysign(1, track.getOmega()))
+                        BIB_tree.Fill()   
+
+    if ievt % 100 == 0:
+        print("")
 
 reader.close()
 
 # write histograms
-output_file = TFile(options.outDir + "ntup_softpion.root", 'RECREATE')
+output_file = TFile(options.outFile, 'RECREATE')
 for histo in histos_list:
     histo.Write()
-BIB_tree.Write()
+if options.doTree:
+    BIB_tree.Write()
 output_file.Close()
