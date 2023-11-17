@@ -11,13 +11,16 @@ import fnmatch
 parser = OptionParser()
 parser.add_option('-i', '--inFile', help='--inFile Output_REC.slcio',
                   type=str, default='Output_REC.slcio')
-parser.add_option('-o', '--outDir', help='--outDir ./',
-                  type=str, default='./')
+parser.add_option('-o', '--outFile', help='--outFile ntup_photons.root',
+                  type=str, default='ntup_photons.root')
 (options, args) = parser.parse_args()
 
 arrBins_theta = array('d', (0., 30.*TMath.Pi()/180., 40.*TMath.Pi()/180., 50.*TMath.Pi()/180., 60.*TMath.Pi()/180., 70.*TMath.Pi()/180.,
                             90.*TMath.Pi()/180., 110.*TMath.Pi()/180., 120.*TMath.Pi()/180., 130.*TMath.Pi()/180., 140.*TMath.Pi()/180., 150.*TMath.Pi()/180., TMath.Pi()))
 arrBins_E = array('d', (0., 5., 10., 15., 20., 25., 50., 100., 250., 500., 1000., 2500., 5000.))
+
+#Global Flag
+do_calo_tree = False
 
 # declare histograms
 h_truth_E = TH1D('truth_E', 'truth_E', len(arrBins_E)-1, arrBins_E)
@@ -109,6 +112,20 @@ photon_tree.Branch("E_truth",  E_truth,  'var/D')
 photon_tree.Branch("phi_truth", phi_truth, 'var/D')
 photon_tree.Branch("theta_truth", theta_truth, 'var/D')
 
+####################################
+calo_tree = TTree("calo_tree", "calo_tree")
+E_cell = array('d', [0])
+#theta_cell = array('d', [0])
+E_sim = array('d', [0])
+#theta_sim = array('d', [0])
+isECAL = array('i', [0])
+calo_tree.Branch("E_cell",  E_cell,  'var/D')
+#calo_tree.Branch("theta_cell", theta_cell, 'var/D')
+calo_tree.Branch("E_sim",  E_sim,  'var/D')
+#calo_tree.Branch("theta_sim", theta_sim, 'var/D')
+calo_tree.Branch("isECAL",  isECAL,  'var/I')
+
+
 to_process = []
 
 if os.path.isdir(options.inFile):
@@ -151,7 +168,7 @@ for file in to_process:
                 h_truth_E.Fill(mcp.getEnergy())
                 h_truth_theta.Fill(tlv.Theta())
         '''
-
+        
         # Fill the reco-level histos
         pfoCollection = event.getCollection('PandoraPFOs')
         h_Npfo.Fill(len(pfoCollection))
@@ -167,6 +184,10 @@ for file in to_process:
         minDREM = 999999.
         minDRHAD = 999999.
 
+        E[0] = -1
+        phi[0] = -4
+        theta[0] = -1
+
         for pfo in pfoCollection:
             h_pfo_type.Fill(abs(pfo.getType()))
             dp3 = pfo.getMomentum()
@@ -180,14 +201,18 @@ for file in to_process:
 
             dR = tlv_pfo.DeltaR(tlv)
 
-            if dR < minDREM and abs(pfo.getType()) == 22:
-                minDREM = dR
-                matchedEM_E = pfo.getEnergy()
-                matchedEM_theta = tlv_pfo.Theta()
-            if dR < minDRHAD and abs(pfo.getType()) == 2112:
-                minDRHAD = dR
-                matchedHAD_E = pfo.getEnergy()
-                matchedHAD_theta = tlv_pfo.Theta()
+            if pfo.getEnergy()/mcpCollection[0].getEnergy() > 0.5:
+                if dR < minDREM and abs(pfo.getType()) == 22:
+                    minDREM = dR
+                    matchedEM_E = pfo.getEnergy()
+                    matchedEM_theta = tlv_pfo.Theta()
+                    E[0] = pfo.getEnergy()
+                    phi[0] = tlv_pfo.Phi()
+                    theta[0] = tlv_pfo.Theta()
+                if dR < minDRHAD and abs(pfo.getType()) == 2112:
+                    minDRHAD = dR
+                    matchedHAD_E = pfo.getEnergy()
+                    matchedHAD_theta = tlv_pfo.Theta()
 
         print(allEM_E, allHAD_E, matchedEM_E, matchedHAD_E)
 
@@ -209,9 +234,28 @@ for file in to_process:
 
         jetCollection = event.getCollection('JetOut')
         minDRjet = 999999.
-        E[0] = -1
-        phi[0] = -4
-        theta[0] = -1
+
+        clusterCollection = event.getCollection('PandoraClusters')
+        minDRclus = 99999.
+        for cluster in clusterCollection:
+
+            px = cluster.getEnergy()*sin(cluster.getITheta())*cos(cluster.getIPhi())
+            py = cluster.getEnergy()*sin(cluster.getITheta())*sin(cluster.getIPhi())
+            pz = cluster.getEnergy()*cos(cluster.getITheta())
+
+            tlv_clus = TLorentzVector()
+            tlv_clus.SetPxPyPzE(px, py, pz, cluster.getEnergy())
+
+            dR = tlv_clus.DeltaR(tlv)
+
+            if dR < minDRclus:
+                minDRclus = dR
+                '''
+                E[0] = cluster.getEnergy()
+                phi[0] = cluster.getIPhi()
+                theta[0] = cluster.getITheta()
+                '''
+        photon_tree.Fill()
 
         for jet in jetCollection:
             dp3 = jet.getMomentum()
@@ -222,107 +266,90 @@ for file in to_process:
 
             if dR < minDRjet:
                 minDRjet = dR
-                E[0] =jet.getEnergy()
-                phi[0] = tlv_pfo.Phi()
-                theta[0] = tlv_pfo.Theta()
-            
         
-        if minDRjet<0.2:
+        if minDRjet<0.4:
             h_matched_theta.Fill(tlv.Theta())
             h_matched_E.Fill(tlv.Energy())
         
-        photon_tree.Fill()
-
-        # Fill the simhit-level histos and aggregated energy
-        '''
-        ECALsimhitCollection = event.getCollection('ECalBarrelCollection')
-        encoding = ECALsimhitCollection.getParameters(
-        ).getStringVal(EVENT.LCIO.CellIDEncoding)
-        decoder = UTIL.BitField64(encoding)
-
-        for simhit in ECALsimhitCollection:
-            cellID = int(simhit.getCellID0())
-            decoder.setValue(cellID)
-            layer = decoder["layer"].value()
-
-            h_ECAL_simhit_E.Fill(simhit.getEnergy())
-            h_ECAL_simhit_layer.Fill(layer, simhit.getEnergy())
-
-            E_ele = 0
-            E_gamma = 0
-            E_other = 0
-            for c in range(0, simhit.getNMCParticles()):
-                if abs(simhit.getPDGCont(c)) == 11:
-                    E_ele = E_ele + simhit.getEnergyCont(c)
-                elif abs(simhit.getPDGCont(c)) == 22:
-                    E_gamma = E_gamma + simhit.getEnergyCont(c)
-                else:
-                    E_other = E_other + simhit.getEnergyCont(c)
-            h_ECAL_simhit_layer_ele.Fill(layer, E_ele)
-            h_ECAL_simhit_layer_gamma.Fill(layer, E_gamma)
-            h_ECAL_simhit_layer_other.Fill(layer, E_other)
-
-        HCALsimhitCollection = event.getCollection('HCalBarrelCollection')
-        encoding = ECALsimhitCollection.getParameters(
-        ).getStringVal(EVENT.LCIO.CellIDEncoding)
-        decoder = UTIL.BitField64(encoding)
-
-        for simhit in HCALsimhitCollection:
-            cellID = int(simhit.getCellID0())
-            decoder.setValue(cellID)
-            layer = decoder["layer"].value()
-
-            h_HCAL_simhit_E.Fill(simhit.getEnergy())
-            h_HCAL_simhit_layer.Fill(layer, simhit.getEnergy())
-        '''
-
         # Fill the hit-level histos and aggregated energy
         ECAL_sumE = 0.
-        ecal_coll = ['EcalBarrelCollectionRec','EcalEndcapCollectionRec']
-        for coll in ecal_coll:
-            ECALhitCollection = event.getCollection(coll)
+        ecal_coll = ['EcalBarrelCollectionSel','EcalEndcapCollectionSel']
+        ecal_relcoll = ['EcalBarrelRelationsSimSel','EcalEndcapRelationsSimSel']
+        
+        for icoll, coll in enumerate(ecal_coll):
 
-            encoding = ECALhitCollection.getParameters(
-            ).getStringVal(EVENT.LCIO.CellIDEncoding)
-            decoder = UTIL.BitField64(encoding)
+            try:
+                ECALhitCollection = event.getCollection(coll)
 
-            for hit in ECALhitCollection:
-                cellID = int(hit.getCellID0())
-                decoder.setValue(cellID)
-                layer = decoder["layer"].value()
+                relationCollection = event.getCollection(ecal_relcoll[icoll])
+                relation = UTIL.LCRelationNavigator(relationCollection)
 
-                h_ECAL_hit_time.Fill(hit.getTime())
-                h_ECAL_hit_E.Fill(hit.getEnergy())
-                h_ECAL_hit_layer.Fill(layer, hit.getEnergy())
+                encoding = ECALhitCollection.getParameters(
+                ).getStringVal(EVENT.LCIO.CellIDEncoding)
+                decoder = UTIL.BitField64(encoding)
 
-                ECAL_sumE = ECAL_sumE + hit.getEnergy()
-                pos = hit.getPosition()
-                h_ECAL_hit_R.Fill(sqrt(pos[0]*pos[0]+pos[1]*pos[1]))
+                for hit in ECALhitCollection:
+                    cellID = int(hit.getCellID0())
+                    decoder.setValue(cellID)
+                    layer = decoder["layer"].value()
 
-            h_ECAL_sumE.Fill(ECAL_sumE)
+                    h_ECAL_hit_time.Fill(hit.getTime())
+                    h_ECAL_hit_E.Fill(hit.getEnergy())
+                    h_ECAL_hit_layer.Fill(layer, hit.getEnergy())
+
+                    ECAL_sumE = ECAL_sumE + hit.getEnergy()
+                    pos = hit.getPosition()
+                    h_ECAL_hit_R.Fill(sqrt(pos[0]*pos[0]+pos[1]*pos[1]))
+
+                    E_cell[0] = hit.getEnergy()
+                    sim_hit = relation.getRelatedToObjects(hit)[0]
+                    E_sim[0] = sim_hit.getEnergy()
+                    isECAL[0] = 1
+
+                    calo_tree.Fill()
+
+                h_ECAL_sumE.Fill(ECAL_sumE)
+            except:
+                print("No", coll, "found")
 
         HCAL_sumE = 0.
-        hcal_coll = ['HcalBarrelsCollectionRec','HcalEndcapsCollectionRec']
-        for coll in hcal_coll:
-            HCALhitCollection = event.getCollection(coll)
+        hcal_coll = ['HcalBarrelsCollectionSel','HcalEndcapsCollectionSel']
+        hcal_relcoll = ['HcalBarrelRelationsSimSel','HcalEndcapRelationsSimSel']
 
-            encoding = HCALhitCollection.getParameters(
-            ).getStringVal(EVENT.LCIO.CellIDEncoding)
-            decoder = UTIL.BitField64(encoding)
+        for icoll, coll in enumerate(hcal_coll):
 
-            for hit in HCALhitCollection:
-                cellID = int(hit.getCellID0())
-                decoder.setValue(cellID)
-                layer = decoder["layer"].value()
+            try:
+                HCALhitCollection = event.getCollection(coll)
 
-                h_HCAL_hit_time.Fill(hit.getTime())
-                h_HCAL_hit_E.Fill(hit.getEnergy())
-                h_HCAL_hit_layer.Fill(layer, hit.getEnergy())
-                HCAL_sumE = HCAL_sumE + hit.getEnergy()
-                pos = hit.getPosition()
-                h_HCAL_hit_R.Fill(sqrt(pos[0]*pos[0]+pos[1]*pos[1]))
+                relationCollection = event.getCollection(hcal_relcoll[icoll])
+                relation = UTIL.LCRelationNavigator(relationCollection)
 
-            h_HCAL_sumE.Fill(HCAL_sumE)
+                encoding = HCALhitCollection.getParameters(
+                ).getStringVal(EVENT.LCIO.CellIDEncoding)
+                decoder = UTIL.BitField64(encoding)
+
+                for hit in HCALhitCollection:
+                    cellID = int(hit.getCellID0())
+                    decoder.setValue(cellID)
+                    layer = decoder["layer"].value()
+
+                    h_HCAL_hit_time.Fill(hit.getTime())
+                    h_HCAL_hit_E.Fill(hit.getEnergy())
+                    h_HCAL_hit_layer.Fill(layer, hit.getEnergy())
+                    HCAL_sumE = HCAL_sumE + hit.getEnergy()
+                    pos = hit.getPosition()
+                    h_HCAL_hit_R.Fill(sqrt(pos[0]*pos[0]+pos[1]*pos[1]))
+
+                    E_cell[0] = hit.getEnergy()
+                    sim_hit = relation.getRelatedToObjects(hit)[0]
+                    E_sim[0] = sim_hit.getEnergy()
+                    isECAL[0] = 0
+
+                    calo_tree.Fill()
+
+                h_HCAL_sumE.Fill(HCAL_sumE)
+            except:
+                print("No", coll, "found")
 
         print(ECAL_sumE, HCAL_sumE)
 
@@ -337,8 +364,10 @@ for file in to_process:
     reader.close()
 
 # write histograms
-output_file = TFile(options.outDir + "ntup_pfoPFO.root", 'RECREATE')
+output_file = TFile(options.outFile, 'RECREATE')
 for histo in histos_list:
     histo.Write()
 photon_tree.Write()
+if do_calo_tree:
+    calo_tree.Write()
 output_file.Close()

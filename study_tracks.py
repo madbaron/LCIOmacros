@@ -128,14 +128,14 @@ pdgID = array('i', [0])
 isLLP = array('i', [0])
 
 # create the branches and assign the fill-variables to them as doubles (D)
+tree.Branch("pT_truth",  pt_truth,  'var/D')
+tree.Branch("theta_truth", theta_truth, 'var/D')
+tree.Branch("z_truth", z_truth, 'var/D')
 tree.Branch("pT",  pt,  'var/D')
-tree.Branch("pTtruth",  pt_truth,  'var/D')
 tree.Branch("phi", phi, 'var/D')
 tree.Branch("theta", theta, 'var/D')
-tree.Branch("theta_truth", theta_truth, 'var/D')
 tree.Branch("d0", d0, 'var/D')
 tree.Branch("z0", z0, 'var/D')
-tree.Branch("z_truth", z_truth, 'var/D')
 tree.Branch("sigma_d0", sigma_d0, 'var/D')
 tree.Branch("sigma_z0", sigma_z0, 'var/D')
 tree.Branch("omega", omega, 'var/D')
@@ -144,7 +144,6 @@ tree.Branch("ndf", ndf, 'var/I')
 tree.Branch("nhits", nhits, 'var/I')
 tree.Branch("nholes", nholes, 'var/I')
 tree.Branch("pdgID", pdgID, 'var/I')
-tree.Branch("isLLP", isLLP, 'var/I')
 
 #########################
 # create a reader and open an LCIO file
@@ -157,140 +156,75 @@ for ievent, event in enumerate(reader):
     if ievent % 100 == 0:
         print("Processing event " + str(ievent))
 
-    try:
-        relationCollection = event.getCollection('MCParticle_SiTracks_Refitted')
-        relation = UTIL.LCRelationNavigator(relationCollection)
+    relationCollection = event.getCollection('MCParticle_SiTracks_Refitted')
+    relation = UTIL.LCRelationNavigator(relationCollection)
 
-        hit_relations = []
-        IBTrackerHitsRelations = event.getCollection('IBTrackerHitsRelations')
-        hit_relations.append(IBTrackerHitsRelations)
-        IETrackerHitsRelations = event.getCollection('IETrackerHitsRelations')
-        hit_relations.append(IETrackerHitsRelations)
-        OBTrackerHitsRelations = event.getCollection('OBTrackerHitsRelations')
-        hit_relations.append(OBTrackerHitsRelations)
-        OETrackerHitsRelations = event.getCollection('OETrackerHitsRelations')
-        hit_relations.append(OETrackerHitsRelations)
-        VBTrackerHitsRelations = event.getCollection('VBTrackerHitsRelations')
-        hit_relations.append(VBTrackerHitsRelations)
-        VETrackerHitsRelations = event.getCollection('VETrackerHitsRelations')
-        hit_relations.append(VETrackerHitsRelations)
+    mcpCollection = event.getCollection('MCParticle')
+    for mcp in mcpCollection:
 
-        # filling standard tracks
-        tracks = event.getCollection('SiTracks_Refitted')
+        charge = mcp.getCharge()
+        status = mcp.getGeneratorStatus()
 
-        for itrack, track in enumerate(tracks):
-            pt[0] = 0.3 * Bfield / fabs(track.getOmega() * 1000.)
-            phi[0] = track.getPhi()
-            theta[0] = TMath.Pi()/2-atan(track.getTanLambda())
-            d0[0] = track.getD0()
-            z0[0] = track.getZ0()
-            sigma_d0[0] = track.getCovMatrix()[0]
-            sigma_z0[0] = track.getCovMatrix()[9]
-            omega[0] = track.getOmega()
-            chi2[0] = track.getChi2()
-            ndf[0] = track.getNdf()
+        if fabs(charge) > 0:
+            if fabs(mcp.getPDG()) == 13:
 
-            hits = track.getTrackerHits()
-            numhits = len(hits)
-            holes = int(track.getNholes())
-            nhits[0] = numhits
-            nholes[0] = holes
-            isLLP[0] = 0
+                hard_rad = check_hard_radiation(mcp, 0.1)
+                
+                if hard_rad:
+                    print("radiated significant energy, discarding")
+                else:
+                    vx = mcp.getVertex()
+                    rprod = sqrt(vx[0]*vx[0]+vx[1]*vx[1])
+                    dp3 = mcp.getMomentum()
+                    tlv = TLorentzVector()
+                    tlv.SetPxPyPzE(dp3[0], dp3[1], dp3[2], mcp.getEnergy())
 
-            try:
-                mcp = relation.getRelatedFromObjects(track)[0]
-                pdgID[0] = abs(mcp.getPDG())
-                vx = mcp.getVertex()
-                z_truth[0] = vx[2]
-                dp3 = mcp.getMomentum()
-                tlv = TLorentzVector()
-                tlv.SetPxPyPzE(dp3[0], dp3[1], dp3[2], mcp.getEnergy())
-                pt_truth[0] = tlv.Perp()
-                theta_truth[0] = tlv.Theta()
-                rprod = sqrt(vx[0]*vx[0]+vx[1]*vx[1])
+                    if tlv.Perp() > 0.2:
 
-            except:
-                pt_truth[0] = -1.
-                theta_truth[0] = -1.
-                z_truth[0] = -99999.
-                pdgID[0] = 0
+                        h_truth_Rprod.Fill(rprod)
+                        h_truth_pT.Fill(tlv.Perp())
+                        h_truth_phi.Fill(tlv.Phi())
+                        h_truth_theta.Fill(tlv.Theta())
+                        h_truth_z0.Fill(vx[2])
 
-            h_track_d0.Fill(d0[0])
-            h_track_nholes.Fill(holes)
-            h_track_nhits.Fill(numhits)
-            h_track_chi2ndf.Fill(track.getChi2()/track.getNdf())
+                        pt_truth[0] = tlv.Perp()
+                        theta_truth[0] = tlv.Theta()
+                        z_truth[0] = vx[2]
 
-            tree.Fill()
+                        tracks = relation.getRelatedToObjects(mcp)
+                        for track in tracks:
+                            
+                            hits = track.getTrackerHits()
+                            numhits = len(hits)
 
-        # Look at particles from Rhad decays and their matched tracks
-        mcpCollection = event.getCollection('MCParticle')
-
-        for mcp in mcpCollection:
-
-            charge = mcp.getCharge()
-            status = mcp.getGeneratorStatus()
-
-            if fabs(charge) > 0:
-                if fabs(mcp.getPDG()) == 13:
-
-                    hard_rad = check_hard_radiation(mcp, 0.01)
-                    
-                    if hard_rad:
-                        print("radiated significant energy, discarding")
-                    else:
-                        vx = mcp.getVertex()
-                        rprod = sqrt(vx[0]*vx[0]+vx[1]*vx[1])
-                        dp3 = mcp.getMomentum()
-                        tlv = TLorentzVector()
-                        tlv.SetPxPyPzE(dp3[0], dp3[1], dp3[2], mcp.getEnergy())
-
-                        if tlv.Perp() > 0.5:
-
-                            h_truth_Rprod.Fill(rprod)
-                            h_truth_pT.Fill(tlv.Perp())
-                            h_truth_phi.Fill(tlv.Phi())
-                            h_truth_theta.Fill(tlv.Theta())
-                            h_truth_z0.Fill(vx[2])
-
-                            tracks = relation.getRelatedToObjects(mcp)
-                            for track in tracks:
+                            if len(numhits)>5:
                                 h_track_Rprod.Fill(rprod)
                                 h_track_pT.Fill(tlv.Perp())
                                 h_track_phi.Fill(tlv.Phi())
                                 h_track_theta.Fill(tlv.Theta())
                                 h_track_z0.Fill(vx[2])
+                                h_track_d0.Fill(d0[0])
+                                h_track_chi2ndf.Fill(track.getChi2()/track.getNdf())
 
-    except:
-        print("No relation collection!")
+                            pt[0] = 0.3 * Bfield / fabs(track.getOmega() * 1000.)
+                            phi[0] = track.getPhi()
+                            theta[0] = TMath.Pi()/2-atan(track.getTanLambda())
+                            d0[0] = track.getD0()
+                            z0[0] = track.getZ0()
+                            sigma_d0[0] = track.getCovMatrix()[0]
+                            sigma_z0[0] = track.getCovMatrix()[9]
+                            omega[0] = track.getOmega()
+                            chi2[0] = track.getChi2()
+                            ndf[0] = track.getNdf()
 
-        # filling standard tracks
-        tracks = event.getCollection('SiTracks_Refitted')
+                            holes = int(track.getNholes())
+                            nhits[0] = numhits
+                            nholes[0] = holes
 
-        for itrack, track in enumerate(tracks):
-            pt[0] = 0.3 * Bfield / fabs(track.getOmega() * 1000.)
-            phi[0] = track.getPhi()
-            theta[0] = TMath.Pi()/2-atan(track.getTanLambda())
-            d0[0] = track.getD0()
-            z0[0] = track.getZ0()
-            sigma_d0[0] = track.getCovMatrix()[0]
-            sigma_z0[0] = track.getCovMatrix()[9]
-            omega[0] = track.getOmega()
-            chi2[0] = track.getChi2()
-            ndf[0] = track.getNdf()
+                            h_track_nholes.Fill(holes)
+                            h_track_nhits.Fill(numhits)
 
-            hits = track.getTrackerHits()
-            numhits = len(hits)
-            holes = int(track.getNholes())
-            nhits[0] = numhits
-            nholes[0] = holes
-            isLLP[0] = 0
-
-            h_track_d0.Fill(d0[0])
-            h_track_nholes.Fill(holes)
-            h_track_nhits.Fill(numhits)
-            h_track_chi2ndf.Fill(track.getChi2()/track.getNdf())
-
-            tree.Fill()
+                            tree.Fill()
 
 reader.close()
 

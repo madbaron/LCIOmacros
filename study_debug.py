@@ -21,8 +21,59 @@ reader.open(options.inFile)
 # loop over all events in the file
 for ievent, event in enumerate(reader):
 
-    print("Processing event ", ievent)
+    mcpCollection = event.getCollection('MCParticle')
+    printO = False
 
+    for mcp in mcpCollection:
+        if mcp.getPDG() == 22 :
+            if mcp.getGeneratorStatus() == 1:
+                if len(mcp.getParents()) == 0:
+                    print("Processing event ", ievent)
+
+                    dp3 = mcp.getMomentum()
+                    tlv = TLorentzVector()
+                    tlv.SetPxPyPzE(dp3[0], dp3[1], dp3[2], mcp.getEnergy())
+
+                    print("MC photon", mcp.getEnergy(), tlv.Theta(), tlv.Phi())
+                    
+                    pfoCollection = event.getCollection('PandoraPFOs')
+                    print("N pfo ", len(pfoCollection))
+
+                    for pfo in pfoCollection:
+                        dp3 = pfo.getMomentum()
+                        tlv_pfo = TLorentzVector()
+                        tlv_pfo.SetPxPyPzE(dp3[0], dp3[1], dp3[2], pfo.getEnergy())
+
+                        if pfo.getEnergy()>1.:
+                            print(pfo.getType(), pfo.getEnergy(), tlv_pfo.Theta(), tlv_pfo.Phi())
+
+                    jetCollection = event.getCollection('JetOut')
+            
+                    print("N jet ", len(jetCollection))
+            
+                    for jet in jetCollection:
+                        dp3 = jet.getMomentum()
+                        tlv_jet = TLorentzVector()
+                        tlv_jet.SetPxPyPzE(dp3[0], dp3[1], dp3[2], jet.getEnergy())
+            
+                        if jet.getEnergy()>1.:
+                            print("Jet ", jet.getEnergy(), tlv_jet.Theta(), tlv_jet.Phi())
+
+                    clusterCollection = event.getCollection('PandoraClusters')
+                    for cluster in clusterCollection:
+
+                        px = cluster.getEnergy()*sin(cluster.getITheta())*cos(cluster.getIPhi())
+                        py = cluster.getEnergy()*sin(cluster.getITheta())*sin(cluster.getIPhi())
+                        pz = cluster.getEnergy()*cos(cluster.getITheta())
+
+                        tlv_clus = TLorentzVector()
+                        tlv_clus.SetPxPyPzE(px, py, pz, cluster.getEnergy())
+
+                        dR = tlv_clus.DeltaR(tlv)
+                        print("Cluster", cluster.getEnergy(), cluster.getITheta(), cluster.getIPhi())
+
+
+    '''
     try:
         relationCollection = event.getCollection('MCParticle_SiTracks_Refitted')
         relation = UTIL.LCRelationNavigator(relationCollection)
@@ -49,5 +100,6 @@ for ievent, event in enumerate(reader):
 
     except:
         print("No relation collection!")
+    '''
 
 reader.close()

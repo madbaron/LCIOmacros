@@ -16,8 +16,8 @@ cell_depth_HCAL = 26.5
 parser = OptionParser()
 parser.add_option('-i', '--inFile', help='--inFile Output_REC.slcio',
                   type=str, default='Output_REC.slcio')
-parser.add_option('-o', '--outDir', help='--outDir ./',
-                  type=str, default='./')
+parser.add_option('-o', '--outFile', help='--outFile ntup_BIBsub.root',
+                  type=str, default='ntup_BIBsub.root')
 (options, args) = parser.parse_args()
 
 arrBins_theta = array('d', (0., 30.*TMath.Pi()/180., 40.*TMath.Pi()/180., 50.*TMath.Pi()/180., 60.*TMath.Pi()/180., 70.*TMath.Pi()/180.,
@@ -269,7 +269,7 @@ for file in to_process:
     reader.close()
 
 # write histograms
-output_file = TFile(options.outDir + "ntup_BIBsub.root", 'RECREATE')
+output_file = TFile(options.outFile, 'RECREATE')
 for histo in histos_list:
     histo.Write()
 hit_tree.Write()
