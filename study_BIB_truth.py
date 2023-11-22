@@ -23,6 +23,11 @@ parser.add_option('-o', '--outFile', help='--outFile histos_BIB.root',
 h_nHits_VXB = TH1D('n_simHits_VXB', 'n_simHits_VXB', 100, 0, 100)
 h_nHits_VXE = TH1D('n_simHits_VXE', 'n_simHits_VXE', 100, 0, 100)
 
+h_nHits_VXB_time = TH1D('n_simHits_VXB_time',
+                        'n_simHits_VXB_time', 100, 0, 100)
+h_nHits_VXE_time = TH1D('n_simHits_VXE_time',
+                        'n_simHits_VXE_time', 100, 0, 100)
+
 #########################
 # create a reader and open an LCIO file
 reader = IOIMPL.LCFactory.getInstance().createLCReader()
@@ -63,6 +68,8 @@ for ievt, event in enumerate(reader):
     for key, value in my_vb_dict.items():
         # print(f"Counter for element {key}: {value['counter']}")
         h_nHits_VXB.Fill(value['counter'])
+        if (key.getTime() > -0.5) and (key.getTime() < 15.):
+            h_nHits_VXB_time.Fill(value['counter'])
 
     VETrackerHitsCollection = event.getCollection('VertexEndcapCollection')
     encoding = VETrackerHitsCollection.getParameters(
@@ -90,6 +97,8 @@ for ievt, event in enumerate(reader):
     for key, value in my_ve_dict.items():
         # print(f"Counter for element {key}: {value['counter']}")
         h_nHits_VXE.Fill(value['counter'])
+        if (key.getTime() > -0.5) and (key.getTime() < 15.):
+            h_nHits_VXE_time.Fill(value['counter'])
 
 reader.close()
 
@@ -97,4 +106,6 @@ reader.close()
 output_file = TFile(options.outFile, 'RECREATE')
 h_nHits_VXB.Write()
 h_nHits_VXE.Write()
+h_nHits_VXB_time.Write()
+h_nHits_VXE_time.Write()
 output_file.Close()
