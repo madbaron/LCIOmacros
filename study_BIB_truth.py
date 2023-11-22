@@ -29,11 +29,11 @@ reader = IOIMPL.LCFactory.getInstance().createLCReader()
 reader.open(options.inFile)
 # loop over all events in the file
 
-# Initialize an empty dictionary with counters
-my_vb_dict = {}
-my_ve_dict = {}
-
 for ievt, event in enumerate(reader):
+
+    # Initialize an empty dictionary with counters
+    my_vb_dict = {}
+    my_ve_dict = {}
 
     if ievt % 100 == 0:
         print("Event " + str(ievt))
