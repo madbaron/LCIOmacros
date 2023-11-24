@@ -55,7 +55,7 @@ for ievent, event in enumerate(reader):
         print("Processing event " + str(ievent))
 
     # getting tracks and relative hits
-    tracks = event.getCollection("SiTracks_Refitted")
+    tracks = event.getCollection("SiTracks")
 
     for itrack, track in enumerate(tracks):
 

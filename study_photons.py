@@ -201,7 +201,7 @@ for file in to_process:
 
             dR = tlv_pfo.DeltaR(tlv)
 
-            if pfo.getEnergy()/mcpCollection[0].getEnergy() > 0.5:
+            if pfo.getEnergy()/mcpCollection[0].getEnergy() > 0.: #change threshold here if needed
                 if dR < minDREM and abs(pfo.getType()) == 22:
                     minDREM = dR
                     matchedEM_E = pfo.getEnergy()

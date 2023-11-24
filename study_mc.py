@@ -36,9 +36,9 @@ h_muon_theta = TH1D('muon_theta', 'muon_theta', 100, 0, TMath.Pi())
 h_muon_z = TH1D('muon_z', 'muon_z', 100, -100, 100)
 
 h_entry_point = TH2D('entry_point', 'entry_point',
-                     400, -200., 200., 50, 0., 50.)
-h_entry_point_z = TH1D('entry_point_z', 'entry_point_z', 400, -200., 200.)
-h_entry_point_R = TH1D('entry_point_R', 'entry_point_R', 50, 0., 50.)
+                     400, -2000., 2000., 500, 0., 500.)
+h_entry_point_z = TH1D('entry_point_z', 'entry_point_z', 400, -2000., 2000.)
+h_entry_point_R = TH1D('entry_point_R', 'entry_point_R', 500, 0., 500.)
 
 h_species = TH1D('species', 'species', 50, 0., 50.)
 h_species_time = TH1D('species_time', 'species_time', 50, 0., 50.)

@@ -1,6 +1,6 @@
 from array import array
 from pyLCIO import IOIMPL, EVENT, UTIL
-from ROOT import TH1D, TMath, TFile, TLorentzVector, TEfficiency
+from ROOT import TH1D, TMath, TFile, TLorentzVector, TEfficiency, TH2D
 from math import *
 from optparse import OptionParser
 from itertools import combinations
@@ -87,6 +87,12 @@ h_nhits = TH1D('h_nhits', 'h_nhits', 52-is_ten_TeV, 0., 52-is_ten_TeV)
 h_ntimehits = TH1D('h_ntimehits', 'h_ntimehits',
                    52-is_ten_TeV, 0., 52-is_ten_TeV)
 
+h_nhits_endcap_2D = TH2D('h_nhits_endcap_2D', 'h_nhits_endcap_2D', 300, -150., 150., 300, -150., 150.)
+h_nhits_endcap_R = TH1D('h_nhits_endcap_R', 'h_nhits_endcap_R', 150, 0., 150.)
+h_nhits_endcap_R_time = TH1D('h_nhits_endcap_R_time', 'h_nhits_endcap_R_time', 150, 0., 150.)
+
+h_nhits_barrel_z = TH1D('h_nhits_barrel_z', 'h_nhits_barrel_z', 140, -70., 70.)
+h_nhits_barrel_z_time = TH1D('h_nhits_barrel_z_time', 'h_nhits_barrel_z_time', 140, -70., 70.)
 
 #########################
 
@@ -143,6 +149,17 @@ for ievt, event in enumerate(reader):
             h_nhits.Fill(bin, wei)
             h_nhits_nowei.Fill(bin)
 
+            if detector == 2:
+                if layer == 3:
+                    pos = hit.getPosition()
+                    h_nhits_endcap_2D.Fill(pos[0], pos[1])
+                    h_nhits_endcap_R.Fill(sqrt(pos[0]*pos[0]+pos[1]*pos[1]), wei)
+
+            if detector == 1:
+                if layer == 0:
+                    pos = hit.getPosition()
+                    h_nhits_barrel_z.Fill(pos[2], wei)
+
     # now time
     for coll in timeCollections:
 
@@ -163,6 +180,16 @@ for ievt, event in enumerate(reader):
             bin, wei = getBin(detector, side, layer)
             h_ntimehits.Fill(bin, wei)
 
+            if detector == 2:
+                if layer == 3:
+                    pos = hit.getPosition()
+                    h_nhits_endcap_R_time.Fill(sqrt(pos[0]*pos[0]+pos[1]*pos[1]), wei)
+
+            if detector == 1:
+                if layer == 0:
+                    pos = hit.getPosition()
+                    h_nhits_barrel_z_time.Fill(pos[2], wei)
+
 h_nhits.Scale(1./totEv)
 h_ntimehits.Scale(1./totEv)
 
@@ -172,4 +199,9 @@ output_file = TFile(options.outFile, 'RECREATE')
 h_nhits.Write()
 h_ntimehits.Write()
 h_nhits_nowei.Write()
+h_nhits_endcap_2D.Write()
+h_nhits_endcap_R.Write()
+h_nhits_endcap_R_time.Write()
+h_nhits_barrel_z.Write()
+h_nhits_barrel_z_time.Write()
 output_file.Close()
