@@ -156,7 +156,7 @@ for ievent, event in enumerate(reader):
     if ievent % 100 == 0:
         print("Processing event " + str(ievent))
 
-    relationCollection = event.getCollection('MCParticle_SiTracks_Refitted')
+    relationCollection = event.getCollection('MCParticle_SiTracks')
     relation = UTIL.LCRelationNavigator(relationCollection)
 
     mcpCollection = event.getCollection('MCParticle')
@@ -179,7 +179,7 @@ for ievent, event in enumerate(reader):
                     tlv = TLorentzVector()
                     tlv.SetPxPyPzE(dp3[0], dp3[1], dp3[2], mcp.getEnergy())
 
-                    if tlv.Perp() > 0.2:
+                    if tlv.Perp() > 0.5:
 
                         h_truth_Rprod.Fill(rprod)
                         h_truth_pT.Fill(tlv.Perp())
@@ -197,7 +197,7 @@ for ievent, event in enumerate(reader):
                             hits = track.getTrackerHits()
                             numhits = len(hits)
 
-                            if len(numhits)>5:
+                            if numhits>5:
                                 h_track_Rprod.Fill(rprod)
                                 h_track_pT.Fill(tlv.Perp())
                                 h_track_phi.Fill(tlv.Phi())

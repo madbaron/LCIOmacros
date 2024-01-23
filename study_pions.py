@@ -11,8 +11,8 @@ import fnmatch
 parser = OptionParser()
 parser.add_option('-i', '--inFile', help='--inFile Output_REC.slcio',
                   type=str, default='Output_REC.slcio')
-parser.add_option('-o', '--outDir', help='--outDir ./',
-                  type=str, default='./')
+parser.add_option('-o', '--outFile', help='--outFile ntup_pions.root',
+                  type=str, default='ntup_pions.root')
 (options, args) = parser.parse_args()
 
 arrBins_theta = array('d', (0., 30.*TMath.Pi()/180., 40.*TMath.Pi()/180., 50.*TMath.Pi()/180., 60.*TMath.Pi()/180., 70.*TMath.Pi()/180.,
@@ -280,47 +280,53 @@ for file in to_process:
         ECAL_sumE = 0.
         ecal_coll = ['EcalBarrelCollectionRec','EcalEndcapCollectionRec']
         for coll in ecal_coll:
-            ECALhitCollection = event.getCollection(coll)
+            try:
+                ECALhitCollection = event.getCollection(coll)
 
-            encoding = ECALhitCollection.getParameters(
-            ).getStringVal(EVENT.LCIO.CellIDEncoding)
-            decoder = UTIL.BitField64(encoding)
+                encoding = ECALhitCollection.getParameters(
+                ).getStringVal(EVENT.LCIO.CellIDEncoding)
+                decoder = UTIL.BitField64(encoding)
 
-            for hit in ECALhitCollection:
-                cellID = int(hit.getCellID0())
-                decoder.setValue(cellID)
-                layer = decoder["layer"].value()
+                for hit in ECALhitCollection:
+                    cellID = int(hit.getCellID0())
+                    decoder.setValue(cellID)
+                    layer = decoder["layer"].value()
 
-                h_ECAL_hit_time.Fill(hit.getTime())
-                h_ECAL_hit_E.Fill(hit.getEnergy())
-                h_ECAL_hit_layer.Fill(layer, hit.getEnergy())
+                    h_ECAL_hit_time.Fill(hit.getTime())
+                    h_ECAL_hit_E.Fill(hit.getEnergy())
+                    h_ECAL_hit_layer.Fill(layer, hit.getEnergy())
 
-                ECAL_sumE = ECAL_sumE + hit.getEnergy()
-                pos = hit.getPosition()
-                h_ECAL_hit_R.Fill(sqrt(pos[0]*pos[0]+pos[1]*pos[1]))
-            h_ECAL_sumE.Fill(ECAL_sumE)
+                    ECAL_sumE = ECAL_sumE + hit.getEnergy()
+                    pos = hit.getPosition()
+                    h_ECAL_hit_R.Fill(sqrt(pos[0]*pos[0]+pos[1]*pos[1]))
+                h_ECAL_sumE.Fill(ECAL_sumE)
+            except:
+                print("No", coll, "found")
 
         HCAL_sumE = 0.
         hcal_coll = ['HcalBarrelsCollectionRec','HcalEndcapsCollectionRec']
         for coll in hcal_coll:
-            HCALhitCollection = event.getCollection(coll)
+            try:
+                HCALhitCollection = event.getCollection(coll)
 
-            encoding = HCALhitCollection.getParameters(
-            ).getStringVal(EVENT.LCIO.CellIDEncoding)
-            decoder = UTIL.BitField64(encoding)
+                encoding = HCALhitCollection.getParameters(
+                ).getStringVal(EVENT.LCIO.CellIDEncoding)
+                decoder = UTIL.BitField64(encoding)
 
-            for hit in HCALhitCollection:
-                cellID = int(hit.getCellID0())
-                decoder.setValue(cellID)
-                layer = decoder["layer"].value()
+                for hit in HCALhitCollection:
+                    cellID = int(hit.getCellID0())
+                    decoder.setValue(cellID)
+                    layer = decoder["layer"].value()
 
-                h_HCAL_hit_time.Fill(hit.getTime())
-                h_HCAL_hit_E.Fill(hit.getEnergy())
-                h_HCAL_hit_layer.Fill(layer, hit.getEnergy())
-                HCAL_sumE = HCAL_sumE + hit.getEnergy()
-                pos = hit.getPosition()
-                h_HCAL_hit_R.Fill(sqrt(pos[0]*pos[0]+pos[1]*pos[1]))
-            h_HCAL_sumE.Fill(HCAL_sumE)
+                    h_HCAL_hit_time.Fill(hit.getTime())
+                    h_HCAL_hit_E.Fill(hit.getEnergy())
+                    h_HCAL_hit_layer.Fill(layer, hit.getEnergy())
+                    HCAL_sumE = HCAL_sumE + hit.getEnergy()
+                    pos = hit.getPosition()
+                    h_HCAL_hit_R.Fill(sqrt(pos[0]*pos[0]+pos[1]*pos[1]))
+                h_HCAL_sumE.Fill(HCAL_sumE)
+            except:
+                print("No", coll, "found")
 
         print(ECAL_sumE, HCAL_sumE)
 
@@ -335,7 +341,8 @@ for file in to_process:
     reader.close()
 
 # write histograms
-output_file = TFile(options.outDir + "ntup_pfoPFO.root", 'RECREATE')
+output_file = TFile(options.outFile, 'RECREATE')
+#output_file = TFile(options.outDir + "ntup_pfoPFO.root", 'RECREATE')
 for histo in histos_list:
     histo.Write()
 pion_tree.Write()

@@ -24,8 +24,10 @@ for ievent, event in enumerate(reader):
     mcpCollection = event.getCollection('MCParticle')
     printO = False
 
+    print(" ")
+
     for mcp in mcpCollection:
-        if mcp.getPDG() == 22 :
+        if mcp.getPDG() == 130 :
             if mcp.getGeneratorStatus() == 1:
                 if len(mcp.getParents()) == 0:
                     print("Processing event ", ievent)
@@ -34,7 +36,7 @@ for ievent, event in enumerate(reader):
                     tlv = TLorentzVector()
                     tlv.SetPxPyPzE(dp3[0], dp3[1], dp3[2], mcp.getEnergy())
 
-                    print("MC photon", mcp.getEnergy(), tlv.Theta(), tlv.Phi())
+                    print("MC part", mcp.getPDG(), mcp.getEnergy(), tlv.Theta(), tlv.Phi())
                     
                     pfoCollection = event.getCollection('PandoraPFOs')
                     print("N pfo ", len(pfoCollection))
@@ -72,34 +74,19 @@ for ievent, event in enumerate(reader):
                         dR = tlv_clus.DeltaR(tlv)
                         print("Cluster", cluster.getEnergy(), cluster.getITheta(), cluster.getIPhi())
 
+    HCAL_sumE = 0.
+    hcal_coll = ['HcalBarrelsCollectionRec','HcalEndcapsCollectionRec']
 
-    '''
-    try:
-        relationCollection = event.getCollection('MCParticle_SiTracks_Refitted')
-        relation = UTIL.LCRelationNavigator(relationCollection)
+    for icoll, coll in enumerate(hcal_coll):
 
-        # Look at the MC particles
-        mcpCollection = event.getCollection('MCParticle')
+        try:
+            HCALhitCollection = event.getCollection(coll)
 
-        for mcp in mcpCollection:
+            for hit in HCALhitCollection:
+                HCAL_sumE = HCAL_sumE + hit.getEnergy()
+        except:
+            print("No", coll, "found")
 
-            charge = mcp.getCharge()
-
-            if fabs(charge) > 0:
-                if fabs(mcp.getPDG()) == 13:
-                    dp3 = mcp.getMomentum()
-                    tlv = TLorentzVector()
-                    tlv.SetPxPyPzE(dp3[0], dp3[1], dp3[2], mcp.getEnergy())
-
-                    if tlv.Perp() > 0.5:
-                        print("MCP pT ", tlv.Perp())
-
-                        tracks = relation.getRelatedToObjects(mcp)
-                        for track in tracks:
-                            print("Track tanLambda ", track.getTanLambda())
-
-    except:
-        print("No relation collection!")
-    '''
+    print("SumE", HCAL_sumE)
 
 reader.close()

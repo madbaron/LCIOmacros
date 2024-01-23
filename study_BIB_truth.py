@@ -1,10 +1,9 @@
 from pyLCIO import IOIMPL
 from pyLCIO import EVENT, UTIL
-from ROOT import TColor, TH1D, TH2D, TFile, TCanvas, gROOT, gStyle, TLegend, TVector3, TMath
+from ROOT import TColor, TH1D, TH2D, TFile, TCanvas, gROOT, gStyle, TLegend, TVector3, TMath, TRandom3, TGraph2D
 from math import *
 from optparse import OptionParser
-import os
-import fnmatch
+from array import array
 
 #########################
 # parameters
@@ -16,6 +15,7 @@ parser.add_option('-o', '--outFile', help='--outFile histos_BIB.root',
                   type=str, default='histos_BIB.root')
 (options, args) = parser.parse_args()
 
+speedoflight = 299792458/1000000  # mm/ns
 
 # h_entry_point = TH2D('h_entry_point', 'h_entry_point',
 #                     400, -200., 200., 50, 0., 50.)
@@ -36,9 +36,13 @@ reader.open(options.inFile)
 
 for ievt, event in enumerate(reader):
 
+    rndm = TRandom3(ievt)
+
     # Initialize an empty dictionary with counters
     my_vb_dict = {}
+    my_vb_dict_time = {}
     my_ve_dict = {}
+    my_ve_dict_time = {}
 
     if ievt % 100 == 0:
         print("Event " + str(ievt))
@@ -59,17 +63,54 @@ for ievt, event in enumerate(reader):
             # Check if the element is already in the dictionary
             if part not in my_vb_dict:
                 # If not, add it to the dictionary with a counter initialized to 1
+                hit_list = [hit]
                 my_vb_dict[part] = {
-                    "PDG": part.getPDG(), "counter": 1}
+                    "PDG": part.getPDG(), "counter": 1, "hits": hit_list}
             else:
                 # If it's already in the dictionary, increment the counter
                 my_vb_dict[part]["counter"] += 1
+                my_vb_dict[part]["hits"].append(hit)
 
+            pos = hit.getPosition()  # mm
+            d = sqrt(pos[0]*pos[0] + pos[1]* pos[1] + pos[2]*pos[2])
+            tof = d/speedoflight
+            corrected_time = hit.getTime()*(1.+rndm.Gaus(0., 0.03)) - tof
+
+            if (corrected_time > -0.09) and (corrected_time < 0.15):
+                # Check if the element is already in the dictionary
+                if part not in my_vb_dict_time:
+                    # If not, add it to the dictionary with a counter initialized to 1
+                    my_vb_dict_time[part] = {
+                        "message": f"Element {part.getPDG()} found!", "counter": 1}
+                else:
+                    # If it's already in the dictionary, increment the counter
+                    my_vb_dict_time[part]["counter"] += 1
+
+
+    max_hits = 0
+    the_hits = []
     for key, value in my_vb_dict.items():
-        # print(f"Counter for element {key}: {value['counter']}")
         h_nHits_VXB.Fill(value['counter'])
-        if (key.getTime() > -0.5) and (key.getTime() < 15.):
-            h_nHits_VXB_time.Fill(value['counter'])
+        if value['counter'] > max_hits:
+            max_hits = value['counter']
+            the_hits = value['hits']
+
+    print("Max hits", len(the_hits))
+    x = array('d')
+    y = array('d')
+    z = array('d')
+    for hit in the_hits:
+        x.append(hit.getPosition()[0])
+        y.append(hit.getPosition()[1])
+        z.append(hit.getPosition()[2])
+
+    print(z)        
+    print(x)        
+    print(y)        
+    my_trajectory = TGraph2D(len(the_hits), z, x, y)
+
+    for key, value in my_vb_dict_time.items():
+        h_nHits_VXB_time.Fill(value['counter'])
 
     VETrackerHitsCollection = event.getCollection('VertexEndcapCollection')
     encoding = VETrackerHitsCollection.getParameters(
@@ -94,11 +135,26 @@ for ievt, event in enumerate(reader):
                 # If it's already in the dictionary, increment the counter
                 my_ve_dict[part]["counter"] += 1
 
+            pos = hit.getPosition()  # mm
+            d = sqrt(pos[0]*pos[0] + pos[1]* pos[1] + pos[2]*pos[2])
+            tof = d/speedoflight
+            corrected_time = hit.getTime()*(1.+rndm.Gaus(0., 0.03)) - tof
+
+            if (corrected_time > -0.09) and (corrected_time < 0.15):
+                # Check if the element is already in the dictionary
+                if part not in my_ve_dict_time:
+                    # If not, add it to the dictionary with a counter initialized to 1
+                    my_ve_dict_time[part] = {
+                        "message": f"Element {part.getPDG()} found!", "counter": 1}
+                else:
+                    # If it's already in the dictionary, increment the counter
+                    my_ve_dict_time[part]["counter"] += 1
+
     for key, value in my_ve_dict.items():
-        # print(f"Counter for element {key}: {value['counter']}")
         h_nHits_VXE.Fill(value['counter'])
-        if (key.getTime() > -0.5) and (key.getTime() < 15.):
-            h_nHits_VXE_time.Fill(value['counter'])
+
+    for key, value in my_ve_dict_time.items():
+        h_nHits_VXE_time.Fill(value['counter'])
 
 reader.close()
 
@@ -108,4 +164,5 @@ h_nHits_VXB.Write()
 h_nHits_VXE.Write()
 h_nHits_VXB_time.Write()
 h_nHits_VXE_time.Write()
+my_trajectory.Write()
 output_file.Close()
