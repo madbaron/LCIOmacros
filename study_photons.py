@@ -17,7 +17,8 @@ parser.add_option('-o', '--outFile', help='--outFile ntup_photons.root',
 
 arrBins_theta = array('d', (0., 30.*TMath.Pi()/180., 40.*TMath.Pi()/180., 50.*TMath.Pi()/180., 60.*TMath.Pi()/180., 70.*TMath.Pi()/180.,
                             90.*TMath.Pi()/180., 110.*TMath.Pi()/180., 120.*TMath.Pi()/180., 130.*TMath.Pi()/180., 140.*TMath.Pi()/180., 150.*TMath.Pi()/180., TMath.Pi()))
-arrBins_E = array('d', (0., 5., 10., 15., 20., 25., 50., 100., 250., 500., 1000., 2500., 5000.))
+#arrBins_E = array('d', (0., 5., 10., 15., 20., 25., 50., 100., 250., 500., 1000., 2500., 5000.))
+arrBins_E = array('d', (0., 5., 10., 15., 20., 25., 50., 100.))
 
 #Global Flag
 do_calo_tree = False

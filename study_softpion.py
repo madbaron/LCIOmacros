@@ -138,7 +138,7 @@ for ievt, event in enumerate(reader):
         print("Now loop on MCP")
         
     for mcp in mcpCollection:
-        if fabs(mcp.getPDG())==211:
+        if fabs(mcp.getPDG())==13:
             dp3 = mcp.getMomentum()
             tlv = TLorentzVector()
             tlv.SetPxPyPzE(dp3[0], dp3[1], dp3[2], mcp.getEnergy())
@@ -146,7 +146,6 @@ for ievt, event in enumerate(reader):
             folded = tlv.Theta()
             if (tlv.Theta() > TMath.Pi()/2):
                 folded = TMath.Pi()-tlv.Theta()
-            
             #print(tlv.Perp(), tlv.Theta())
             h_truth_pT.Fill(tlv.Perp())
             h_truth_theta.Fill(folded)
@@ -273,7 +272,7 @@ for ievt, event in enumerate(reader):
         except:
             pdgId = 0
             
-        if fabs(pdgId)==211:
+        if fabs(pdgId)==13:
             pass
         else:
             hits = track.getTrackerHits()
