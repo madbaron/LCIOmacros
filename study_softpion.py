@@ -16,14 +16,12 @@ parser.add_option('-o', '--outFile', help='--outFile histos_softpion.root',
 parser.add_option('-t', '--doTree', dest='doTree', help='Fill BIB tree', action='store_true', default=False)
 (options, args) = parser.parse_args()
 
-Bfield = 5  # T
-if "3TeV" in options.inFile:
-    Bfield = 3.57  # T
+Bfield = 3.57  # T
 
 # declare histograms
-arrBins_pT = array('d', (0., 0.1, 0.2, 0.3, 0.4, 0.5, 1., 2., 3.))
-arrBins_theta = array('d', (0, 10.*TMath.Pi()/180.,20.*TMath.Pi()/180.,30.*TMath.Pi()/180., 40.*TMath.Pi()/180., 50.*TMath.Pi()/180., 60.*TMath.Pi()/180., 70.*TMath.Pi()/180.,
-                            90.*TMath.Pi()/180., 110.*TMath.Pi()/180., 120.*TMath.Pi()/180., 130.*TMath.Pi()/180., 140.*TMath.Pi()/180., 150.*TMath.Pi()/180., 160.*TMath.Pi()/180., 170.*TMath.Pi()/180.,TMath.Pi()))
+arrBins_pT = array('d', (0., 0.1, 0.2, 0.3, 0.4, 0.5, 1.))
+arrBins_theta = array('d', (0., 10.*TMath.Pi()/180., 20.*TMath.Pi()/180., 30.*TMath.Pi()/180., 40.*TMath.Pi()/180., 50.*TMath.Pi()/180., 60.*TMath.Pi()/180., 70.*TMath.Pi()/180.,
+                            90.*TMath.Pi()/180.))
 
 h_truth_pT = TH1D('truth_pT', 'truth_pT', len(arrBins_pT)-1, arrBins_pT)
 h_truth_theta = TH1D('truth_theta', 'truth_theta',
@@ -104,15 +102,19 @@ for ievt, event in enumerate(reader):
         print("Now loop on MCP")
         
     for mcp in mcpCollection:
-        if fabs(mcp.getPDG())==211:
+        if fabs(mcp.getPDG())==13:
             dp3 = mcp.getMomentum()
             tlv = TLorentzVector()
             tlv.SetPxPyPzE(dp3[0], dp3[1], dp3[2], mcp.getEnergy())
 
+            folded = tlv.Theta()
+            if (tlv.Theta() > TMath.Pi()/2):
+                folded = TMath.Pi()-tlv.Theta()
+
             #print(tlv.Perp(), tlv.Theta())
             h_truth_pT.Fill(tlv.Perp())
-            h_truth_theta.Fill(tlv.Theta())
-            h_truth_theta_pT.Fill(tlv.Theta(),tlv.Perp())
+            h_truth_theta.Fill(folded)
+            h_truth_theta_pT.Fill(folded,tlv.Perp())
 
             vpos = mcp.getVertex()
             r = sqrt(vpos[0]*vpos[0]+vpos[1]*vpos[1])
@@ -121,7 +123,7 @@ for ievt, event in enumerate(reader):
             h_truth_z0.Fill(vpos[2])
 
             if r > 31.:
-                h_truth_theta_pT_highR.Fill(tlv.Theta(),tlv.Perp())
+                h_truth_theta_pT_highR.Fill(folded,tlv.Perp())
 
             rel_tracks = relation.getRelatedToObjects(mcp)
             for track in rel_tracks:
@@ -133,10 +135,10 @@ for ievt, event in enumerate(reader):
                     h_track_d0.Fill(track.getD0())
                     h_track_z0.Fill(track.getZ0())
                     h_track_pT.Fill(tlv.Perp())
-                    h_track_theta.Fill(tlv.Theta())
-                    h_track_theta_pT.Fill(tlv.Theta(),tlv.Perp())
+                    h_track_theta.Fill(folded)
+                    h_track_theta_pT.Fill(folded,tlv.Perp())
                     if r > 31.:
-                        h_track_theta_pT_highR.Fill(tlv.Theta(),tlv.Perp())
+                        h_track_theta_pT_highR.Fill(folded,tlv.Perp())
 
 
     #print("PFOs (PDG, pT, theta)")
@@ -162,7 +164,7 @@ for ievt, event in enumerate(reader):
         except:
             pdgId = 0
             
-        if fabs(pdgId)==211:
+        if fabs(pdgId)==13:
             pass
         else:
             Nhits = len(track.getTrackerHits())
