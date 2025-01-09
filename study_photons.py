@@ -1,11 +1,9 @@
 from pyLCIO import IOIMPL
-from pyLCIO import EVENT, UTIL
-from ROOT import TH1D, TFile, TLorentzVector, TMath, TTree, TVector3
-from math import *
+from ROOT import TH1D, TFile, TMath, TTree
+from ROOT.Math import PtEtaPhiEVector, VectorUtil
 from optparse import OptionParser
 from array import array
 import os
-import fnmatch
 
 #########################
 parser = OptionParser()
@@ -15,84 +13,32 @@ parser.add_option('-o', '--outFile', help='--outFile ntup_photons.root',
                   type=str, default='ntup_photons.root')
 (options, args) = parser.parse_args()
 
+#Global variables
+matching_threshold = 0.01
+hadfrac_cleaning = 0.1
+
 arrBins_theta = array('d', (0., 30.*TMath.Pi()/180., 40.*TMath.Pi()/180., 50.*TMath.Pi()/180., 60.*TMath.Pi()/180., 70.*TMath.Pi()/180.,
                             90.*TMath.Pi()/180., 110.*TMath.Pi()/180., 120.*TMath.Pi()/180., 130.*TMath.Pi()/180., 140.*TMath.Pi()/180., 150.*TMath.Pi()/180., TMath.Pi()))
-#arrBins_E = array('d', (0., 5., 10., 15., 20., 25., 50., 100., 250., 500., 1000., 2500., 5000.))
-arrBins_E = array('d', (0., 5., 10., 15., 20., 25., 50., 100.))
-
-#Global Flag
-do_calo_tree = False
+arrBins_E = array('d', (0., 5., 10., 15., 20., 25., 30., 40., 50., 75., 100., 150., 200., 250., 300., 400., 500., 750., 1000.))
 
 # declare histograms
 h_truth_E = TH1D('truth_E', 'truth_E', len(arrBins_E)-1, arrBins_E)
 h_truth_theta = TH1D('truth_theta', 'truth_theta', len(arrBins_theta)-1, arrBins_theta)
-h_matched_theta = TH1D('matched_theta', 'matched_theta', len(arrBins_theta)-1, arrBins_theta)
+
 h_matched_E = TH1D('matched_E', 'matched_E', len(arrBins_E)-1, arrBins_E)
+h_matched_theta = TH1D('matched_theta', 'matched_theta', len(arrBins_theta)-1, arrBins_theta)
+
+h_alt_E = TH1D('alt_E', 'alt_E', len(arrBins_E)-1, arrBins_E)
+h_alt_theta = TH1D('alt_theta', 'alt_theta', len(arrBins_theta)-1, arrBins_theta)
 
 h_Npfo = TH1D('Npfo', "Npfo", 1000, 0, 1000)
-h_EMpfo_E = TH1D('EMpfo_E', 'EMpfo_E', len(arrBins_E)-1, arrBins_E)
-h_HADpfo_E = TH1D('HADpfo_E', 'HADpfo_E', len(arrBins_E)-1, arrBins_E)
-h_matchedEMpfo_E = TH1D('matchedEMpfo_E', 'matchedEMpfo_E', len(arrBins_E)-1, arrBins_E)
-h_matchedEMpfo_theta = TH1D('matchedEMpfo_theta', 'matchedEMpfo_theta',
-                            len(arrBins_theta)-1, arrBins_theta)
-h_matchedHADpfo_E = TH1D('matchedHADpfo_E', 'matchedHADpfo_E', len(arrBins_E)-1, arrBins_E)
-h_matchedHADpfo_theta = TH1D('matchedHADpfo_theta', 'matchedHADpfo_theta',
-                             len(arrBins_theta)-1, arrBins_theta)
 h_pfo_type = TH1D('pfo_type', "pfo_type", 3000, 0, 3000)
 
-h_deltaEM_E = TH1D('deltaEM_E', 'deltaEM_E', 250, -1000, 1000)
-h_deltaHAD_E = TH1D('deltaHAD_E', 'deltaHAD_E', 250, -1000, 1000)
-h_delta_E_sumE = TH1D('delta_E_sumE', 'delta_E_sumE', 250, -1000, 1000)
-
-# Low-level sim hit distributions
-h_ECAL_simhit_E = TH1D('ECAL_simhit_E', 'ECAL_simhit_E', 100, 0, 20)  # GeV
-h_ECAL_simhit_layer = TH1D(
-    'ECAL_simhit_layer', 'ECAL_simhit_layer', 100, 0, 100)
-h_ECAL_simhit_layer_ele = TH1D(
-    'ECAL_simhit_layer_ele', 'ECAL_simhit_layer_ele', 100, 0, 100)
-h_ECAL_simhit_layer_gamma = TH1D(
-    'ECAL_simhit_layer_gamma', 'ECAL_simhit_layer_gamma', 100, 0, 100)
-h_ECAL_simhit_layer_other = TH1D(
-    'ECAL_simhit_layer_other', 'ECAL_simhit_layer_other', 100, 0, 100)
-
-h_HCAL_simhit_E = TH1D('HCAL_simhit_E', 'HCAL_simhit_E', 100, 0, 20)  # GeV
-h_HCAL_simhit_layer = TH1D(
-    'HCAL_simhit_layer', 'HCAL_simhit_layer', 100, 0, 100)
-
-# Low-level digitised hit distributions
-h_ECAL_hit_time = TH1D('ECAL_hit_time', 'ECAL_hit_time', 100, -10, 10)  # ns
-h_ECAL_hit_E = TH1D('ECAL_hit_E', 'ECAL_hit_E', 100, 0, 20)  # GeV
-h_ECAL_hit_R = TH1D('ECAL_hit_R', 'ECAL_hit_R', 100, 1700, 4000)  # m
-h_ECAL_hit_layer = TH1D('ECAL_hit_layer', 'ECAL_hit_layer', 100, 0, 100)
-
-h_HCAL_hit_time = TH1D('HCAL_hit_time', 'HCAL_hit_time', 100, -10, 10)  # ns
-h_HCAL_hit_E = TH1D('HCAL_hit_E', 'HCAL_hit_E', 100, 0, 20)  # GeV
-h_HCAL_hit_R = TH1D('HCAL_hit_R', 'HCAL_hit_R', 100, 1700, 4000)  # m
-h_HCAL_hit_layer = TH1D('HCAL_hit_layer', 'HCAL_hit_layer', 100, 0, 100)
-
-# Aggregated energy info
-h_sumE = TH1D('sumE', 'sumE', 120, 0, 6000)  # GeV
-h_ECAL_sumE = TH1D('ECAL_sumE', 'ECAL_sumE', 120, 0, 6000)  # GeV
-h_HCAL_sumE = TH1D('HCAL_sumE', 'HCAL_sumE', 120, 0, 6000)  # GeV
-h_EMfrac = TH1D('EMfrac', 'EMfrac', 100, 0, 1)  # GeV
-h_EMfrac_PFO = TH1D('EMfrac_PFO', 'EMfrac_PFO', 100, 0, 1)  # GeV
-
 # Histo list for writing to outputs
-histos_list = [h_truth_E, h_truth_theta, h_matched_theta,
-               h_EMpfo_E, h_matched_E,
-               h_HADpfo_E,
-               h_matchedEMpfo_E, h_matchedEMpfo_theta,
-               h_matchedHADpfo_E, h_matchedHADpfo_theta,
-               h_deltaEM_E, h_deltaHAD_E, h_delta_E_sumE,
-               h_Npfo, h_pfo_type,
-               h_ECAL_hit_time, h_ECAL_hit_E, h_ECAL_hit_R,
-               h_HCAL_hit_time, h_HCAL_hit_E, h_HCAL_hit_R,
-               h_ECAL_simhit_E, h_HCAL_simhit_E,
-               h_ECAL_sumE, h_HCAL_sumE,
-               h_EMfrac, h_EMfrac_PFO,
-               h_ECAL_hit_layer, h_HCAL_hit_layer,
-               h_ECAL_simhit_layer, h_ECAL_simhit_layer_ele, h_ECAL_simhit_layer_gamma, h_ECAL_simhit_layer_other,
-               h_HCAL_simhit_layer
+histos_list = [h_truth_E, h_truth_theta,
+               h_matched_E, h_matched_theta,
+               h_alt_E, h_alt_theta,
+               h_Npfo, h_pfo_type
                ]
 
 for histo in histos_list:
@@ -103,29 +49,25 @@ photon_tree = TTree("photon_tree", "photon_tree")
 E = array('d', [0])
 phi = array('d', [0])
 theta = array('d', [0])
+hfrac = array('d', [0])
+E_alt = array('d', [0])
+phi_alt = array('d', [0])
+theta_alt = array('d', [0])
+hfrac_alt = array('d', [0])
 E_truth = array('d', [0])
 phi_truth = array('d', [0])
 theta_truth = array('d', [0])
 photon_tree.Branch("E",  E,  'var/D')
 photon_tree.Branch("phi", phi, 'var/D')
 photon_tree.Branch("theta", theta, 'var/D')
+photon_tree.Branch("hfrac", hfrac, 'var/D')
+photon_tree.Branch("E_alt",  E_alt,  'var/D')
+photon_tree.Branch("phi_alt", phi_alt, 'var/D')
+photon_tree.Branch("theta_alt", theta_alt, 'var/D')
+photon_tree.Branch("hfrac_alt", hfrac_alt, 'var/D')
 photon_tree.Branch("E_truth",  E_truth,  'var/D')
 photon_tree.Branch("phi_truth", phi_truth, 'var/D')
 photon_tree.Branch("theta_truth", theta_truth, 'var/D')
-
-####################################
-calo_tree = TTree("calo_tree", "calo_tree")
-E_cell = array('d', [0])
-#theta_cell = array('d', [0])
-E_sim = array('d', [0])
-#theta_sim = array('d', [0])
-isECAL = array('i', [0])
-calo_tree.Branch("E_cell",  E_cell,  'var/D')
-#calo_tree.Branch("theta_cell", theta_cell, 'var/D')
-calo_tree.Branch("E_sim",  E_sim,  'var/D')
-#calo_tree.Branch("theta_sim", theta_sim, 'var/D')
-calo_tree.Branch("isECAL",  isECAL,  'var/I')
-
 
 to_process = []
 
@@ -152,215 +94,106 @@ for file in to_process:
         mcpCollection = event.getCollection('MCParticle')
         h_truth_E.Fill(mcpCollection[0].getEnergy())
         dp3 = mcpCollection[0].getMomentum()
-        tlv = TLorentzVector()
+        tlv = PtEtaPhiEVector()
         tlv.SetPxPyPzE(dp3[0], dp3[1], dp3[2], mcpCollection[0].getEnergy())
         h_truth_theta.Fill(tlv.Theta())
 
         E_truth[0] = mcpCollection[0].getEnergy()
         phi_truth[0] = tlv.Phi()
         theta_truth[0] = tlv.Theta()
-
-        '''
-        for mcp in mcpCollection:
-            if mcp.getGeneratorStatus() == 1 and len(mcp.getParents()) == 0:
-                dp3 = mcp.getMomentum()
-                tlv = TLorentzVector()
-                tlv.SetPxPyPzE(dp3[0], dp3[1], dp3[2], mcp.getEnergy())
-                h_truth_E.Fill(mcp.getEnergy())
-                h_truth_theta.Fill(tlv.Theta())
-        '''
         
         # Fill the reco-level histos
         pfoCollection = event.getCollection('PandoraPFOs')
-        h_Npfo.Fill(len(pfoCollection))
 
-        # Match true pfo with closest reco PFO in deltaR
-        matchedEM_E = -1.
-        matchedEM_theta = -1.
-        matchedHAD_E = -1.
-        matchedHAD_theta = -1.
+        # Alternative photon candidate first from reco only info
         allEM_E = 0.
         allHAD_E = 0.
+        max_E = -1.
+        max_tlv = PtEtaPhiEVector()
 
-        minDREM = 999999.
-        minDRHAD = 999999.
+        for pfo in pfoCollection:
+            if pfo.getEnergy() > max_E:
+                if abs(pfo.getType()) == 22:
+                    max_E = pfo.getEnergy()
+                    dp3 = pfo.getMomentum()
+                    max_tlv.SetPxPyPzE(dp3[0], dp3[1], dp3[2], pfo.getEnergy())
+
+        E_alt[0] = -1
+        phi_alt[0] = -4
+        theta_alt[0] = -1
+        hfrac_alt[0] = 2
+        tlv_sum = PtEtaPhiEVector()
+        n_pfos_added = 0
+        for pfo in pfoCollection:
+
+            dp3 = pfo.getMomentum()
+            tlv_pfo = PtEtaPhiEVector()
+            tlv_pfo.SetPxPyPzE(dp3[0], dp3[1], dp3[2], pfo.getEnergy())
+
+            dR = VectorUtil.DeltaR(tlv_pfo,max_tlv)
+
+            if dR < matching_threshold:
+                tlv_sum = tlv_sum + tlv_pfo
+
+                n_pfos_added = n_pfos_added + 1
+
+                if abs(pfo.getType()) == 22:
+                    allEM_E = allEM_E + pfo.getEnergy()
+                elif abs(pfo.getType()) == 2112:
+                    allHAD_E = allHAD_E + pfo.getEnergy()
+        
+        h_Npfo.Fill(n_pfos_added)
+
+        E_alt[0] = tlv_sum.E()
+        phi_alt[0] = tlv_sum.Phi()
+        theta_alt[0] = tlv_sum.Theta()
+        if allEM_E+allHAD_E>0:
+            hfrac_alt[0] = allHAD_E/(allEM_E+allHAD_E)
+
+        if hfrac_alt[0] < hadfrac_cleaning:
+            h_alt_E.Fill(E_truth[0]) #for efficiency calculation
+            h_alt_theta.Fill(theta_truth[0])
+
+        # Build a photon candidate summing up all PFOs within matching_threshold of truth
+        allEM_E = 0.
+        allHAD_E = 0.
 
         E[0] = -1
         phi[0] = -4
         theta[0] = -1
-
+        hfrac[0] = 2
+        tlv_sum = PtEtaPhiEVector()
         for pfo in pfoCollection:
-            h_pfo_type.Fill(abs(pfo.getType()))
+
             dp3 = pfo.getMomentum()
-            tlv_pfo = TLorentzVector()
+            tlv_pfo = PtEtaPhiEVector()
             tlv_pfo.SetPxPyPzE(dp3[0], dp3[1], dp3[2], pfo.getEnergy())
 
-            if abs(pfo.getType()) == 22:
-                allEM_E = allEM_E + pfo.getEnergy()
-            elif abs(pfo.getType()) == 2112:
-                allHAD_E = allHAD_E + pfo.getEnergy()
+            dR = VectorUtil.DeltaR(tlv_pfo,tlv)
 
-            dR = tlv_pfo.DeltaR(tlv)
+            if dR < matching_threshold:
+                h_pfo_type.Fill(abs(pfo.getType()))
+                tlv_sum = tlv_sum + tlv_pfo
+            
+                if abs(pfo.getType()) == 22:
+                    allEM_E = allEM_E + pfo.getEnergy()
+                elif abs(pfo.getType()) == 2112:
+                    allHAD_E = allHAD_E + pfo.getEnergy()
 
-            if pfo.getEnergy()/mcpCollection[0].getEnergy() > 0.: #change threshold here if needed
-                if dR < minDREM and abs(pfo.getType()) == 22:
-                    minDREM = dR
-                    matchedEM_E = pfo.getEnergy()
-                    matchedEM_theta = tlv_pfo.Theta()
-                    E[0] = pfo.getEnergy()
-                    phi[0] = tlv_pfo.Phi()
-                    theta[0] = tlv_pfo.Theta()
-                if dR < minDRHAD and abs(pfo.getType()) == 2112:
-                    minDRHAD = dR
-                    matchedHAD_E = pfo.getEnergy()
-                    matchedHAD_theta = tlv_pfo.Theta()
+        if allEM_E+allHAD_E>0:
+            hfrac[0] = allHAD_E/(allEM_E+allHAD_E)
+        E[0] = tlv_sum.E()
+        phi[0] = tlv_sum.Phi()
+        theta[0] = tlv_sum.Theta()
 
-        print(allEM_E, allHAD_E, matchedEM_E, matchedHAD_E)
+        dR_match = VectorUtil.DeltaR(tlv_sum,tlv)
 
-        h_EMpfo_E.Fill(allEM_E)
-        h_HADpfo_E.Fill(allHAD_E)
+        if hfrac[0] < hadfrac_cleaning:
+            if dR_match < 0.1:
+                h_matched_E.Fill(E_truth[0]) #for efficiency calculation
+                h_matched_theta.Fill(theta_truth[0])
 
-        if matchedEM_E > 0:
-            h_matchedEMpfo_E.Fill(matchedEM_E)
-            h_matchedEMpfo_theta.Fill(matchedEM_theta)
-            h_deltaEM_E.Fill(matchedEM_E-mcpCollection[0].getEnergy())
-        if matchedHAD_E > 0:
-            h_matchedHADpfo_E.Fill(matchedHAD_E)
-            h_matchedHADpfo_theta.Fill(matchedHAD_theta)
-            h_deltaHAD_E.Fill(matchedHAD_E-mcpCollection[0].getEnergy())
-
-        if allHAD_E+allEM_E > 0:
-            h_EMfrac_PFO.Fill(allEM_E/(allHAD_E+allEM_E))
-
-
-        jetCollection = event.getCollection('JetOut')
-        minDRjet = 999999.
-
-        clusterCollection = event.getCollection('PandoraClusters')
-        minDRclus = 99999.
-        for cluster in clusterCollection:
-
-            px = cluster.getEnergy()*sin(cluster.getITheta())*cos(cluster.getIPhi())
-            py = cluster.getEnergy()*sin(cluster.getITheta())*sin(cluster.getIPhi())
-            pz = cluster.getEnergy()*cos(cluster.getITheta())
-
-            tlv_clus = TLorentzVector()
-            tlv_clus.SetPxPyPzE(px, py, pz, cluster.getEnergy())
-
-            dR = tlv_clus.DeltaR(tlv)
-
-            if dR < minDRclus:
-                minDRclus = dR
-                '''
-                E[0] = cluster.getEnergy()
-                phi[0] = cluster.getIPhi()
-                theta[0] = cluster.getITheta()
-                '''
         photon_tree.Fill()
-
-        for jet in jetCollection:
-            dp3 = jet.getMomentum()
-            tlv_pfo = TLorentzVector()
-            tlv_pfo.SetPxPyPzE(dp3[0], dp3[1], dp3[2], jet.getEnergy())
-
-            dR = tlv_pfo.DeltaR(tlv)
-
-            if dR < minDRjet:
-                minDRjet = dR
-        
-        if minDRjet<0.4:
-            h_matched_theta.Fill(tlv.Theta())
-            h_matched_E.Fill(tlv.Energy())
-        
-        # Fill the hit-level histos and aggregated energy
-        ECAL_sumE = 0.
-        ecal_coll = ['EcalBarrelCollectionSel','EcalEndcapCollectionSel']
-        ecal_relcoll = ['EcalBarrelRelationsSimSel','EcalEndcapRelationsSimSel']
-        
-        for icoll, coll in enumerate(ecal_coll):
-
-            try:
-                ECALhitCollection = event.getCollection(coll)
-
-                relationCollection = event.getCollection(ecal_relcoll[icoll])
-                relation = UTIL.LCRelationNavigator(relationCollection)
-
-                encoding = ECALhitCollection.getParameters(
-                ).getStringVal(EVENT.LCIO.CellIDEncoding)
-                decoder = UTIL.BitField64(encoding)
-
-                for hit in ECALhitCollection:
-                    cellID = int(hit.getCellID0())
-                    decoder.setValue(cellID)
-                    layer = decoder["layer"].value()
-
-                    h_ECAL_hit_time.Fill(hit.getTime())
-                    h_ECAL_hit_E.Fill(hit.getEnergy())
-                    h_ECAL_hit_layer.Fill(layer, hit.getEnergy())
-
-                    ECAL_sumE = ECAL_sumE + hit.getEnergy()
-                    pos = hit.getPosition()
-                    h_ECAL_hit_R.Fill(sqrt(pos[0]*pos[0]+pos[1]*pos[1]))
-
-                    E_cell[0] = hit.getEnergy()
-                    sim_hit = relation.getRelatedToObjects(hit)[0]
-                    E_sim[0] = sim_hit.getEnergy()
-                    isECAL[0] = 1
-
-                    calo_tree.Fill()
-
-                h_ECAL_sumE.Fill(ECAL_sumE)
-            except:
-                print("No", coll, "found")
-
-        HCAL_sumE = 0.
-        hcal_coll = ['HcalBarrelsCollectionSel','HcalEndcapsCollectionSel']
-        hcal_relcoll = ['HcalBarrelRelationsSimSel','HcalEndcapRelationsSimSel']
-
-        for icoll, coll in enumerate(hcal_coll):
-
-            try:
-                HCALhitCollection = event.getCollection(coll)
-
-                relationCollection = event.getCollection(hcal_relcoll[icoll])
-                relation = UTIL.LCRelationNavigator(relationCollection)
-
-                encoding = HCALhitCollection.getParameters(
-                ).getStringVal(EVENT.LCIO.CellIDEncoding)
-                decoder = UTIL.BitField64(encoding)
-
-                for hit in HCALhitCollection:
-                    cellID = int(hit.getCellID0())
-                    decoder.setValue(cellID)
-                    layer = decoder["layer"].value()
-
-                    h_HCAL_hit_time.Fill(hit.getTime())
-                    h_HCAL_hit_E.Fill(hit.getEnergy())
-                    h_HCAL_hit_layer.Fill(layer, hit.getEnergy())
-                    HCAL_sumE = HCAL_sumE + hit.getEnergy()
-                    pos = hit.getPosition()
-                    h_HCAL_hit_R.Fill(sqrt(pos[0]*pos[0]+pos[1]*pos[1]))
-
-                    E_cell[0] = hit.getEnergy()
-                    sim_hit = relation.getRelatedToObjects(hit)[0]
-                    E_sim[0] = sim_hit.getEnergy()
-                    isECAL[0] = 0
-
-                    calo_tree.Fill()
-
-                h_HCAL_sumE.Fill(HCAL_sumE)
-            except:
-                print("No", coll, "found")
-
-        print(ECAL_sumE, HCAL_sumE)
-
-        h_sumE.Fill(ECAL_sumE+HCAL_sumE)
-
-        if ECAL_sumE+HCAL_sumE > 0:
-            h_EMfrac.Fill(ECAL_sumE/(ECAL_sumE+HCAL_sumE))
-        else:
-            h_EMfrac.Fill(0)
-        h_delta_E_sumE.Fill(ECAL_sumE+HCAL_sumE-mcpCollection[0].getEnergy())
 
     reader.close()
 
@@ -369,6 +202,4 @@ output_file = TFile(options.outFile, 'RECREATE')
 for histo in histos_list:
     histo.Write()
 photon_tree.Write()
-if do_calo_tree:
-    calo_tree.Write()
 output_file.Close()

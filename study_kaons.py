@@ -224,7 +224,7 @@ for file in to_process:
 
         HCAL_sumE = 0.
         #hcal_coll = ['HcalBarrelCollectionSel','HcalEndcapCollectionSel']
-        hcal_coll = ['HcalBarrelsCollectionRec','HcalEndcapsCollectionRec']
+        hcal_coll = ['HcalBarrelCollectionRec','HcalEndcapCollectionRec']
 
         for icoll, coll in enumerate(hcal_coll):
 

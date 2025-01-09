@@ -11,7 +11,7 @@ import itertools
 #########################
 # parameters
 
-Bfield = 3.56  # T
+Bfield = 3.57  # T
 
 parser = OptionParser()
 parser.add_option('-i', '--inFile', help='--inFile Output_REC.slcio',
@@ -21,8 +21,6 @@ parser.add_option('-o', '--outFile', help='--outFile ntup_truth.root',
 (options, args) = parser.parse_args()
 
 #########################
-
-min_dphi = TH1D('min_dphi', 'min_dphi', 100, 0., TMath.Pi())  # GeV
 
 tree = TTree("truth_tree", "truth_tree")
 
@@ -86,7 +84,7 @@ for ievt, event in enumerate(reader):
     for c in mcpCollection:
         if c.getGeneratorStatus() == 1:
             pdg = c.getPDG()
-            if fabs(pdg) == 22 and c.getEnergy() > 20.:
+            if fabs(pdg) == 22:
                 interesting_particles_list.append(c)
 
     n_ph100 = 0
@@ -118,23 +116,6 @@ for ievt, event in enumerate(reader):
 
         tree.Fill()
 
-    mindphi = 1000.
-    for pair in itertools.combinations(interesting_particles_list, 2):
-        dp3A = pair[0].getMomentum()
-        tlvA = TLorentzVector()
-        tlvA.SetPxPyPzE(dp3A[0], dp3A[1], dp3A[2], pair[0].getEnergy())
-
-        dp3B = pair[1].getMomentum()
-        tlvB = TLorentzVector()
-        tlvB.SetPxPyPzE(dp3B[0], dp3B[1], dp3B[2], pair[1].getEnergy())
-
-        newdphi = tlvA.DeltaPhi(tlvB)
-        if newdphi < mindphi:
-            mindphi = newdphi
-
-    #print(str(len(interesting_particles_list)) + " " + str(mindphi))
-    min_dphi.Fill(mindphi)
-
     if n_ph100 == 2 and fabs(mindphi) > 2:
         count = count+1
 
@@ -145,5 +126,4 @@ print("Good events: " + str(count))
 # write outputs
 output_file = TFile(options.outFile, 'RECREATE')
 tree.Write()
-min_dphi.Write()
 output_file.Close()

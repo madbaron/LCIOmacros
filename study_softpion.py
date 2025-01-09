@@ -23,9 +23,9 @@ parser.add_option('-g', '--doHoles', dest='doHoles', help='Check for holes', act
 Bfield = 3.57  # T
 
 # declare histograms
-arrBins_pT = array('d', (0., 0.2, 0.5, 0.75, 1., 1.5, 2., 3., 4., 5.))
-arrBins_theta = array('d', (0, 10.*TMath.Pi()/180.,20.*TMath.Pi()/180.,30.*TMath.Pi()/180., 40.*TMath.Pi()/180., 50.*TMath.Pi()/180., 60.*TMath.Pi()/180., 70.*TMath.Pi()/180.,
-                            90.*TMath.Pi()/180.))
+#arrBins_pT = array('d', (0., 0.2, 0.5, 0.75, 1., 1.5, 2., 3., 4., 5.))
+arrBins_pT = array('d', (0., 0.2, 0.25, 0.3, 0.4, 0.5, 0.75, 1., 2., 3., 4., 5.))
+arrBins_theta = array('d', (30.*TMath.Pi()/180., 40.*TMath.Pi()/180., 50.*TMath.Pi()/180., 60.*TMath.Pi()/180., 70.*TMath.Pi()/180., 90.*TMath.Pi()/180.))
 
 h_Cutflow = TH1D("CutFlowHist", "CutFlowHist", 30, 0, 30)
 
@@ -138,7 +138,7 @@ for ievt, event in enumerate(reader):
         print("Now loop on MCP")
         
     for mcp in mcpCollection:
-        if fabs(mcp.getPDG())==13:
+        if fabs(mcp.getPDG())==211 or fabs(mcp.getPDG())==13:
             dp3 = mcp.getMomentum()
             tlv = TLorentzVector()
             tlv.SetPxPyPzE(dp3[0], dp3[1], dp3[2], mcp.getEnergy())

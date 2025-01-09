@@ -77,7 +77,7 @@ histos_list = [h_ECAL_hit_time, h_ECAL_hit_E, h_ECAL_hit_R,
                hcal_hit_r_barrel, hcal_hit_r_endcap, hcal_hit_depth_barrel,
                ]
 
-histos_list = [ecal_hit_r_barrel, ecal_hit_z_endcap, hcal_hit_r_barrel, hcal_hit_z_endcap]
+histos_list = [ecal_hit_r_barrel, ecal_hit_z_endcap, hcal_hit_r_barrel, hcal_hit_z_endcap, h_ECAL_simhit_layer]
 
 for histo in histos_list:
     histo.SetDirectory(0)
@@ -100,23 +100,9 @@ for ievt, event in enumerate(reader):
 
     # ECAL barrel
     hitsCollection = event.getCollection("ECalBarrelCollection")
-
-    if doTruth:
-        relationCollection = event.getCollection('RelationCaloHit')
-        relation = UTIL.LCRelationNavigator(relationCollection)
-        for ihit, hit in enumerate(hitsCollection):
-            sim_vec = relation.getRelatedToObjects(hit)
-            print(len(sim_vec))
-            '''
-            for simhit in sim_vec:
-                mystring = ""
-                for ipart in range(0, simhit.getNMCParticles()):
-                    mcpart = simhit.getPDGCont(ipart)
-                    if mcpart != 0:
-                        mystring = mystring + " " + str(mcpart)
-                print(mystring)
-            '''
-
+    encoding = hitsCollection.getParameters().getStringVal(EVENT.LCIO.CellIDEncoding)
+    decoder = UTIL.BitField64(encoding)
+    
     for ihit, hit in enumerate(hitsCollection):
         r = sqrt(hit.getPosition()[0]*hit.getPosition()
                  [0] + hit.getPosition()[1]*hit.getPosition()[1])
@@ -126,6 +112,12 @@ for ievt, event in enumerate(reader):
         ecal_hit_depth_barrel.Fill(r-r_min_ecal, density_weight)
         ecal_hit_r_barrel.Fill(r, density_weight)
         ecal_hit_rz.Fill(hit.getPosition()[2], r)
+
+        cellID = int(hit.getCellID0())
+        decoder.setValue(cellID)
+        layer = decoder["layer"].value()
+
+        h_ECAL_simhit_layer.Fill(layer, hit.getEnergy())
 
     # ECAL endcap
     hitsCollection = event.getCollection("ECalEndcapCollection")

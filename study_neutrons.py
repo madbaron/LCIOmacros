@@ -95,7 +95,7 @@ for file in to_process:
                 print("No", coll, "found")
 
         HCAL_sumE = 0.
-        hcal_coll = ['HcalBarrelsCollectionRec','HcalEndcapsCollectionRec']
+        hcal_coll = ['HcalBarrelCollectionRec','HcalEndcapCollectionRec']
 
         for icoll, coll in enumerate(hcal_coll):
 
