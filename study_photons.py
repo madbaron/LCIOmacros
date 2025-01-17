@@ -1,5 +1,5 @@
 from pyLCIO import IOIMPL
-from ROOT import TH1D, TFile, TMath, TTree
+from ROOT import TH1D, TFile, TMath, TTree, TVector3
 from ROOT.Math import PtEtaPhiEVector, VectorUtil
 from optparse import OptionParser
 from array import array
@@ -15,7 +15,7 @@ parser.add_option('-o', '--outFile', help='--outFile ntup_photons.root',
 
 #Global variables
 matching_threshold = 0.01
-hadfrac_cleaning = 0.1
+hadfrac_cleaning = 1.
 
 arrBins_theta = array('d', (0., 30.*TMath.Pi()/180., 40.*TMath.Pi()/180., 50.*TMath.Pi()/180., 60.*TMath.Pi()/180., 70.*TMath.Pi()/180.,
                             90.*TMath.Pi()/180., 110.*TMath.Pi()/180., 120.*TMath.Pi()/180., 130.*TMath.Pi()/180., 140.*TMath.Pi()/180., 150.*TMath.Pi()/180., TMath.Pi()))
@@ -57,6 +57,8 @@ hfrac_alt = array('d', [0])
 E_truth = array('d', [0])
 phi_truth = array('d', [0])
 theta_truth = array('d', [0])
+ECAL_cellsum = array('d', [0])
+HCAL_cellsum = array('d', [0])
 photon_tree.Branch("E",  E,  'var/D')
 photon_tree.Branch("phi", phi, 'var/D')
 photon_tree.Branch("theta", theta, 'var/D')
@@ -68,6 +70,8 @@ photon_tree.Branch("hfrac_alt", hfrac_alt, 'var/D')
 photon_tree.Branch("E_truth",  E_truth,  'var/D')
 photon_tree.Branch("phi_truth", phi_truth, 'var/D')
 photon_tree.Branch("theta_truth", theta_truth, 'var/D')
+photon_tree.Branch("ECAL_cellsum", ECAL_cellsum, 'var/D')
+photon_tree.Branch("HCAL_cellsum", HCAL_cellsum, 'var/D')
 
 to_process = []
 
@@ -112,11 +116,19 @@ for file in to_process:
         max_tlv = PtEtaPhiEVector()
 
         for pfo in pfoCollection:
+            
             if pfo.getEnergy() > max_E:
-                if abs(pfo.getType()) == 22:
-                    max_E = pfo.getEnergy()
+                if (abs(pfo.getType()) == 22) or (abs(pfo.getType()) == 2112):
                     dp3 = pfo.getMomentum()
-                    max_tlv.SetPxPyPzE(dp3[0], dp3[1], dp3[2], pfo.getEnergy())
+
+                    tlv_pfo = PtEtaPhiEVector()
+                    tlv_pfo.SetPxPyPzE(dp3[0], dp3[1], dp3[2], pfo.getEnergy())
+
+                    dR = VectorUtil.DeltaR(tlv_pfo,tlv)
+
+                    if dR < matching_threshold:
+                        max_E = pfo.getEnergy()
+                        max_tlv.SetPxPyPzE(dp3[0], dp3[1], dp3[2], pfo.getEnergy())
 
         E_alt[0] = -1
         phi_alt[0] = -4
@@ -192,6 +204,43 @@ for file in to_process:
             if dR_match < 0.1:
                 h_matched_E.Fill(E_truth[0]) #for efficiency calculation
                 h_matched_theta.Fill(theta_truth[0])
+
+        # Fill the ECAL and HCAL cell sums
+        coneWidth = 0.15
+
+        ECAL_cellsum[0] = 0
+
+        ecal_coll = ['EcalBarrelCollectionSel','EcalEndcapCollectionSel']
+        for icoll, coll in enumerate(ecal_coll):
+
+            try:
+                ECALhitCollection = event.getCollection(coll)
+
+                for hit in ECALhitCollection:
+
+                    pos = TVector3(hit.getPosition()[0], hit.getPosition()[1], hit.getPosition()[2])
+
+                    if VectorUtil.DeltaR(tlv, pos) < coneWidth:
+                        ECAL_cellsum[0] = ECAL_cellsum[0] + hit.getEnergy()
+            except:
+                print("No", coll, "found")
+
+        HCAL_cellsum[0] = 0
+
+        hcal_coll = ['HcalBarrelCollectionRec','HcalEndcapCollectionRec']
+        for icoll, coll in enumerate(hcal_coll):
+
+            try:
+                HCALhitCollection = event.getCollection(coll)
+
+                for hit in HCALhitCollection:
+
+                    pos = TVector3(hit.getPosition()[0], hit.getPosition()[1], hit.getPosition()[2])
+
+                    if VectorUtil.DeltaR(tlv, pos) < coneWidth:
+                        HCAL_cellsum[0] = HCAL_cellsum[0] + hit.getEnergy()
+            except:
+                print("No", coll, "found")
 
         photon_tree.Fill()
 
