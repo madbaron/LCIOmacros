@@ -78,6 +78,7 @@ arrBins_dz0 = array('d', (-2., -1., -0.8, -0.6, -0.5, -0.4, -
 h_truth_Rprod = TH1D('truth_Rprod', 'truth_Rprod',
                      len(arrBins_R)-1, arrBins_R)  # mm
 h_truth_pT = TH1D('truth_pT', 'truth_pT', len(arrBins_pT)-1, arrBins_pT)
+h_truth_pT_central = TH1D('truth_pT_central', 'truth_pT_central', len(arrBins_pT)-1, arrBins_pT)
 h_truth_theta = TH1D('truth_theta', 'truth_theta',
                      len(arrBins_theta)-1, arrBins_theta)
 h_truth_phi = TH1D('truth_phi', 'truth_phi', 20, -TMath.Pi(), TMath.Pi())
@@ -86,6 +87,7 @@ h_truth_z0 = TH1D('truth_z0', 'truth_z0', 100, -20., 20.)
 h_track_d0 = TH1D('track_d0', 'track_d0', 100, -5., 5.)
 h_track_z0 = TH1D('track_z0', 'track_z0', 100, -20., 20.)
 h_track_pT = TH1D('track_pT', 'track_pT', len(arrBins_pT)-1, arrBins_pT)
+h_track_pT_central = TH1D('track_pT_central', 'track_pT_central', len(arrBins_pT)-1, arrBins_pT)
 h_track_phi = TH1D('track_phi', 'track_phi', 20, -TMath.Pi(), TMath.Pi())
 h_track_theta = TH1D('track_theta', 'track_theta',
                      len(arrBins_theta)-1, arrBins_theta)
@@ -97,7 +99,7 @@ h_track_Rprod = TH1D('track_Rprod',
                      'track_Rprod', len(arrBins_R)-1, arrBins_R)  # mm
 
 
-histos_list = [h_truth_Rprod, h_truth_pT, h_truth_theta, h_truth_phi, h_track_chi2ndf, h_truth_z0,
+histos_list = [h_truth_Rprod, h_truth_pT, h_truth_theta, h_truth_phi, h_track_chi2ndf, h_truth_z0, h_truth_pT_central, h_track_pT_central,
                h_track_d0, h_track_z0, h_track_pT, h_track_phi, h_track_theta, h_track_nholes, h_track_nhits, h_track_Rprod]
 
 for histo in histos_list:
@@ -187,6 +189,9 @@ for ievent, event in enumerate(reader):
                         h_truth_theta.Fill(tlv.Theta())
                         h_truth_z0.Fill(vx[2])
 
+                        if (tlv.Theta() > 60.*TMath.Pi()/180.) and (tlv.Theta() < 120.*TMath.Pi()/180.):
+                            h_truth_pT_central.Fill(tlv.Perp())
+
                         pt_truth[0] = tlv.Perp()
                         theta_truth[0] = tlv.Theta()
                         z_truth[0] = vx[2]
@@ -205,6 +210,9 @@ for ievent, event in enumerate(reader):
                                 h_track_z0.Fill(vx[2])
                                 h_track_d0.Fill(d0[0])
                                 h_track_chi2ndf.Fill(track.getChi2()/track.getNdf())
+
+                                if (tlv.Theta() > 60.*TMath.Pi()/180.) and (tlv.Theta() < 120.*TMath.Pi()/180.):
+                                    h_track_pT_central.Fill(tlv.Perp())
 
                             pt[0] = 0.3 * Bfield / fabs(track.getOmega() * 1000.)
                             phi[0] = track.getPhi()
