@@ -94,6 +94,17 @@ h_nhits_endcap_R_time = TH1D('h_nhits_endcap_R_time', 'h_nhits_endcap_R_time', 1
 h_nhits_barrel_z = TH1D('h_nhits_barrel_z', 'h_nhits_barrel_z', 140, -70., 70.)
 h_nhits_barrel_z_time = TH1D('h_nhits_barrel_z_time', 'h_nhits_barrel_z_time', 140, -70., 70.)
 
+#get TH1D histogram bin width
+z_binwidth = h_nhits_barrel_z.GetBinLowEdge(2) - h_nhits_barrel_z.GetBinLowEdge(1)
+R_binwidth = h_nhits_endcap_R.GetBinLowEdge(2) - h_nhits_endcap_R.GetBinLowEdge(1)
+# get TH1D range
+z_min = h_nhits_barrel_z.GetBinLowEdge(1)
+z_max = h_nhits_barrel_z.GetBinLowEdge(h_nhits_barrel_z.GetNbinsX()+1)
+z_range = z_max - z_min
+R_min = h_nhits_endcap_R.GetBinLowEdge(1)
+R_max = h_nhits_endcap_R.GetBinLowEdge(h_nhits_endcap_R.GetNbinsX()+1)
+R_range = R_max - R_min
+
 #########################
 
 # create a reader and open an LCIO file
@@ -153,12 +164,12 @@ for ievt, event in enumerate(reader):
                 if layer == 3:
                     pos = hit.getPosition()
                     h_nhits_endcap_2D.Fill(pos[0], pos[1])
-                    h_nhits_endcap_R.Fill(sqrt(pos[0]*pos[0]+pos[1]*pos[1]), wei)
+                    h_nhits_endcap_R.Fill(sqrt(pos[0]*pos[0]+pos[1]*pos[1]), R_range*wei/R_binwidth)
 
             if detector == 1:
                 if layer == 0:
                     pos = hit.getPosition()
-                    h_nhits_barrel_z.Fill(pos[2], wei)
+                    h_nhits_barrel_z.Fill(pos[2], z_range*wei/z_binwidth)
 
     # now time
     for coll in timeCollections:
@@ -183,12 +194,12 @@ for ievt, event in enumerate(reader):
             if detector == 2:
                 if layer == 3:
                     pos = hit.getPosition()
-                    h_nhits_endcap_R_time.Fill(sqrt(pos[0]*pos[0]+pos[1]*pos[1]), wei)
+                    h_nhits_endcap_R_time.Fill(sqrt(pos[0]*pos[0]+pos[1]*pos[1]), R_range*wei/R_binwidth)
 
             if detector == 1:
                 if layer == 0:
                     pos = hit.getPosition()
-                    h_nhits_barrel_z_time.Fill(pos[2], wei)
+                    h_nhits_barrel_z_time.Fill(pos[2], z_range*wei/z_binwidth)
 
 h_nhits.Scale(1./totEv)
 h_ntimehits.Scale(1./totEv)
