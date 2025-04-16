@@ -103,21 +103,21 @@ reader = IOIMPL.LCFactory.getInstance().createLCReader()
 reader.open(options.inFile)
 
 allCollections = [
-#    "OuterTrackerEndcapCollection",
-#    "OuterTrackerBarrelCollection",
-#    "InnerTrackerEndcapCollection",
-#    "InnerTrackerBarrelCollection",
+    "OuterTrackerEndcapCollection",
+    "OuterTrackerBarrelCollection",
+    "InnerTrackerEndcapCollection",
+    "InnerTrackerBarrelCollection",
     "VertexEndcapCollection",
-#    "VertexBarrelCollection"
+    "VertexBarrelCollection"
     ]
 
 timeCollections = [
-#    "OETrackerHits",
-#    "OBTrackerHits",
-#    "IETrackerHits",
-#    "IBTrackerHits",
+    "OETrackerHits",
+    "OBTrackerHits",
+    "IETrackerHits",
+    "IBTrackerHits",
     "VETrackerHits",
-#    "VBTrackerHits"
+    "VBTrackerHits"
 ]
 
 totEv = 0
