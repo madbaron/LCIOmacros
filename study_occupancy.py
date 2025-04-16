@@ -87,24 +87,15 @@ h_nhits = TH1D('h_nhits', 'h_nhits', 52-is_ten_TeV, 0., 52-is_ten_TeV)
 h_ntimehits = TH1D('h_ntimehits', 'h_ntimehits',
                    52-is_ten_TeV, 0., 52-is_ten_TeV)
 
-h_nhits_endcap_2D = TH2D('h_nhits_endcap_2D', 'h_nhits_endcap_2D', 300, -150., 150., 300, -150., 150.)
-h_nhits_endcap_R = TH1D('h_nhits_endcap_R', 'h_nhits_endcap_R', 150, 0., 150.)
-h_nhits_endcap_R_time = TH1D('h_nhits_endcap_R_time', 'h_nhits_endcap_R_time', 150, 0., 150.)
+h_nhits_endcap_2D = TH2D('h_nhits_endcap_L3_2D', 'h_nhits_endcap_L3_2D', 300, -150., 150., 300, -150., 150.)
+h_nhits_endcap_R = TH1D('h_nhits_endcap_L3_R', 'h_nhits_endcap_L3_R', 150, 0., 150.)
+h_nhits_endcap_R_time = TH1D('h_nhits_endcap_L3_R_time', 'h_nhits_endcap_L3_R_time', 150, 0., 150.)
 
-h_nhits_barrel_z = TH1D('h_nhits_barrel_z', 'h_nhits_barrel_z', 140, -70., 70.)
-h_nhits_barrel_z_time = TH1D('h_nhits_barrel_z_time', 'h_nhits_barrel_z_time', 140, -70., 70.)
+h_nhits_barrel_z = TH1D('h_nhits_barrel_L0_z', 'h_nhits_barrel_L0_z', 140, -70., 70.)
+h_nhits_barrel_z_time = TH1D('h_nhits_barrel_L0_z_time', 'h_nhits_barrel_L0_z_time', 140, -70., 70.)
 
-#get TH1D histogram bin width
-z_binwidth = h_nhits_barrel_z.GetBinLowEdge(2) - h_nhits_barrel_z.GetBinLowEdge(1)
-R_binwidth = h_nhits_endcap_R.GetBinLowEdge(2) - h_nhits_endcap_R.GetBinLowEdge(1)
-# get TH1D range
-z_min = h_nhits_barrel_z.GetBinLowEdge(1)
-z_max = h_nhits_barrel_z.GetBinLowEdge(h_nhits_barrel_z.GetNbinsX()+1)
-z_range = z_max - z_min
-R_min = h_nhits_endcap_R.GetBinLowEdge(1)
-R_max = h_nhits_endcap_R.GetBinLowEdge(h_nhits_endcap_R.GetNbinsX()+1)
-R_range = R_max - R_min
-
+#get TH1D histogram bin width, rest from geo file
+z_wei = 1./((h_nhits_barrel_z.GetBinLowEdge(2) - h_nhits_barrel_z.GetBinLowEdge(1))*0.01*13*16) #cm^2
 #########################
 
 # create a reader and open an LCIO file
@@ -112,20 +103,22 @@ reader = IOIMPL.LCFactory.getInstance().createLCReader()
 reader.open(options.inFile)
 
 allCollections = [
-    "OuterTrackerEndcapCollection",
-    "OuterTrackerBarrelCollection",
-    "InnerTrackerEndcapCollection",
-    "InnerTrackerBarrelCollection",
+#    "OuterTrackerEndcapCollection",
+#    "OuterTrackerBarrelCollection",
+#    "InnerTrackerEndcapCollection",
+#    "InnerTrackerBarrelCollection",
     "VertexEndcapCollection",
-    "VertexBarrelCollection"]
+#    "VertexBarrelCollection"
+    ]
 
 timeCollections = [
-    "OETrackerHits",
-    "OBTrackerHits",
-    "IETrackerHits",
-    "IBTrackerHits",
+#    "OETrackerHits",
+#    "OBTrackerHits",
+#    "IETrackerHits",
+#    "IBTrackerHits",
     "VETrackerHits",
-    "VBTrackerHits"]
+#    "VBTrackerHits"
+]
 
 totEv = 0
 
@@ -164,12 +157,20 @@ for ievt, event in enumerate(reader):
                 if layer == 3:
                     pos = hit.getPosition()
                     h_nhits_endcap_2D.Fill(pos[0], pos[1])
-                    h_nhits_endcap_R.Fill(sqrt(pos[0]*pos[0]+pos[1]*pos[1]), R_range*wei/R_binwidth)
+                    
+                    radius = sqrt(pos[0]*pos[0]+pos[1]*pos[1])
+                    #Find bin number
+                    bin = h_nhits_endcap_R.FindBin(radius)
+                    
+                    #Compute weight
+                    R_wei = 1./(TMath.Pi()*(h_nhits_endcap_R.GetBinLowEdge(bin+1)**2 - h_nhits_endcap_R.GetBinLowEdge(bin)**2)*0.01) #cm^2
+
+                    h_nhits_endcap_R.Fill(radius, R_wei)
 
             if detector == 1:
                 if layer == 0:
                     pos = hit.getPosition()
-                    h_nhits_barrel_z.Fill(pos[2], z_range*wei/z_binwidth)
+                    h_nhits_barrel_z.Fill(pos[2], z_wei)
 
     # now time
     for coll in timeCollections:
@@ -194,12 +195,20 @@ for ievt, event in enumerate(reader):
             if detector == 2:
                 if layer == 3:
                     pos = hit.getPosition()
-                    h_nhits_endcap_R_time.Fill(sqrt(pos[0]*pos[0]+pos[1]*pos[1]), R_range*wei/R_binwidth)
+
+                    radius = sqrt(pos[0]*pos[0]+pos[1]*pos[1])
+                    #Find bin number
+                    bin = h_nhits_endcap_R_time.FindBin(radius)
+                    
+                    #Compute weight
+                    R_wei = 1./(TMath.Pi()*(h_nhits_endcap_R_time.GetBinLowEdge(bin+1)**2 - h_nhits_endcap_R_time.GetBinLowEdge(bin)**2)*0.01) #cm^2
+
+                    h_nhits_endcap_R_time.Fill(sqrt(pos[0]*pos[0]+pos[1]*pos[1]), R_wei)
 
             if detector == 1:
                 if layer == 0:
                     pos = hit.getPosition()
-                    h_nhits_barrel_z_time.Fill(pos[2], z_range*wei/z_binwidth)
+                    h_nhits_barrel_z_time.Fill(pos[2], z_wei)
 
 h_nhits.Scale(1./totEv)
 h_ntimehits.Scale(1./totEv)
