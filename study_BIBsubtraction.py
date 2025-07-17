@@ -7,8 +7,8 @@ from array import array
 import os
 import fnmatch
 
-r_min_ECAL = 1771.
-r_min_HCAL = 2038.1
+r_min_ECAL = 1857.
+r_min_HCAL = 2124.5
 cell_depth_ECAL = 5.35
 cell_depth_HCAL = 26.5
 
@@ -154,7 +154,7 @@ for file in to_process:
             h_ECAL_sumE.Fill(ECAL_sumE)
 
         HCAL_sumE = 0.
-        hcal_coll = ['HcalBarrelsCollectionRec', 'HcalEndcapsCollectionRec']
+        hcal_coll = ['HcalBarrelCollectionRec', 'HcalEndcapCollectionRec']
         for coll in hcal_coll:
 
             try:
@@ -176,7 +176,7 @@ for file in to_process:
                 h_HCAL_hit_E.Fill(hit.getEnergy())
                 
                 denominator = 1.
-                if coll == "HcalBarrelsCollectionRec":
+                if coll == "HcalBarrelCollectionRec":
                     radius = r_min_HCAL + layer*cell_depth_HCAL
                     denominator = (2.*pi*radius*2574.5*2.)
                     h_HCAL_hit_layer_barrel.Fill(layer, hit.getEnergy()/denominator)

@@ -1,6 +1,5 @@
 from pyLCIO import IOIMPL
-from pyLCIO import EVENT, UTIL
-from ROOT import TH1D, TFile, TLorentzVector, TMath, TTree
+from ROOT import TH1D, TFile, TLorentzVector, TProfile2D, TMath
 from math import *
 from optparse import OptionParser
 from array import array
@@ -18,8 +17,12 @@ parser.add_option('-o', '--outFile', help='--outFile ntup_jets.root',
 # declare histograms
 h_mjj = TH1D('mjj', 'mjj', 100, 50, 150)
 
+h_correction = TProfile2D('h_correction', 'h_correction',
+                          20, 0, TMath.Pi(), 100, 0, 500, 0, 2,
+                          's')
+
 # Histo list for writing to outputs
-histos_list = [h_mjj]
+histos_list = [h_mjj, h_correction]
 
 for histo in histos_list:
     histo.SetDirectory(0)
@@ -34,6 +37,7 @@ for ievt, event in enumerate(reader):
     if ievt % 1 == 0:
         print("Processing event " + str(ievt))
 
+    '''
     jetCollection = event.getCollection('ValenciaJetOut')
 
     dp3 = jetCollection[0].getMomentum()
@@ -51,25 +55,52 @@ for ievt, event in enumerate(reader):
     print("Mass", (tlv+tlv2).M())
 
     h_mjj.Fill((tlv+tlv2).M())
+    '''
 
+    #Build the truth jets
     MCparticleCollection = event.getCollection('MCParticle')
+
+    out_quark1 = MCparticleCollection[1].getDaughters()[0]
+    out_quark2 = MCparticleCollection[1].getDaughters()[1]
+
     tlv_d1 = TLorentzVector()
     tlv_d2 = TLorentzVector()
-    for mcparticle in MCparticleCollection:
-        if mcparticle.getPDG() == 23:
-            print("Z", mcparticle.getEnergy())
-            daughters = mcparticle.getDaughters()
-            tlv_d1.SetPxPyPzE(daughters[0].getMomentum()[0], daughters[0].getMomentum()[1], daughters[0].getMomentum()[2], daughters[0].getEnergy())
-            tlv_d2.SetPxPyPzE(daughters[1].getMomentum()[0], daughters[1].getMomentum()[1], daughters[1].getMomentum()[2], daughters[1].getEnergy())
-            break
+    tlv_d1.SetPxPyPzE(out_quark1.getMomentum()[0],
+                     out_quark1.getMomentum()[1],
+                     out_quark1.getMomentum()[2],
+                     out_quark1.getEnergy())
+    tlv_d2.SetPxPyPzE(out_quark2.getMomentum()[0],
+                     out_quark2.getMomentum()[1],
+                     out_quark2.getMomentum()[2],
+                     out_quark2.getEnergy())
+    
+    tlv_truthJet1 = TLorentzVector()
+    tlv_truthJet2 = TLorentzVector()
 
-    print("D1", tlv_d1.Perp())
-    print("D2", tlv_d2.Perp())
+    nu_pdg = [12, 14, 16]  # neutrino PDGs
+    for mcparticle in MCparticleCollection:
+
+        if mcparticle.getGeneratorStatus() == 1:
+            if fabs(mcparticle.getPDG()) in nu_pdg:
+                continue
+
+            tlv = TLorentzVector()
+            tlv.SetPxPyPzE(mcparticle.getMomentum()[0],
+                          mcparticle.getMomentum()[1],
+                          mcparticle.getMomentum()[2],
+                          mcparticle.getEnergy())
+
+            if tlv.DeltaR(tlv_d1) < 1.2:
+                tlv_truthJet1 += tlv
+            if tlv.DeltaR(tlv_d2) < 1.2:
+                tlv_truthJet2 += tlv
+
+    #print("Visible mjj", (tlv_truthJet1 + tlv_truthJet2).M())
 
     tlv_j1 = TLorentzVector()
     tlv_j2 = TLorentzVector()
 
-    jetCollection = event.getCollection('JetOut')
+    jetCollection = event.getCollection('ValenciaJetOut')
     
     deltaR_j = 99
     for jet in jetCollection:
@@ -78,16 +109,7 @@ for ievt, event in enumerate(reader):
         tlv = TLorentzVector()
         tlv.SetPxPyPzE(dp3[0], dp3[1], dp3[2], jet.getEnergy())
 
-        has_charged_pfo = False
-        for constituent in jet.getParticles():
-            if constituent.getCharge() != 0:
-                has_charged_pfo = True
-                break
-
-        if not has_charged_pfo:
-            continue
-
-        deltaR = tlv.DeltaR(tlv_d1)
+        deltaR = tlv.DeltaR(tlv_truthJet1)
 
         if deltaR < deltaR_j:
             tlv_j1 = tlv
@@ -100,31 +122,14 @@ for ievt, event in enumerate(reader):
         tlv = TLorentzVector()
         tlv.SetPxPyPzE(dp3[0], dp3[1], dp3[2], jet.getEnergy())
 
-        has_charged_pfo = False
-        for constituent in jet.getParticles():
-            if constituent.getCharge() != 0:
-                has_charged_pfo = True
-                break
-
-        if not has_charged_pfo:
-            continue
-
-        deltaR = tlv.DeltaR(tlv_d2)
+        deltaR = tlv.DeltaR(tlv_truthJet2)
 
         if deltaR < deltaR_j:
             tlv_j2 = tlv
             deltaR_j = deltaR
-
-    print(tlv_j1.Perp(), tlv_j2.Perp(), (tlv_j1+tlv_j2).M())
-
-        #for constituent in jet.getParticles():
-        #    ids = constituent.getParticleIDs()
-        #    print(constituent.getEnergy(), constituent.getCharge(),
-        #          len(constituent.getTracks()))
-
-            # if len(ids) > 0:
-            #    print(str(ids[0]))
     
+    h_correction.Fill(tlv_j1.Theta(), tlv_truthJet1.E(), tlv_j1.E() / tlv_truthJet1.E())
+    h_correction.Fill(tlv_j2.Theta(), tlv_truthJet2.E(), tlv_j2.E() / tlv_truthJet2.E())
 
 reader.close()
 
