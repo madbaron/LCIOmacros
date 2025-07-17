@@ -15,7 +15,7 @@ parser.add_option('-o', '--outFile', help='--outFile ntup_jets.root',
 (options, args) = parser.parse_args()
 
 # declare histograms
-h_mjj = TH1D('mjj', 'mjj', 100, 50, 150)
+h_mjj = TH1D('mjj', 'mjj', 100, 0, 1000)
 
 h_correction = TProfile2D('h_correction', 'h_correction',
                           20, 0, TMath.Pi(), 100, 0, 500, 0, 2,
@@ -130,6 +130,7 @@ for ievt, event in enumerate(reader):
     
     h_correction.Fill(tlv_j1.Theta(), tlv_truthJet1.E(), tlv_j1.E() / tlv_truthJet1.E())
     h_correction.Fill(tlv_j2.Theta(), tlv_truthJet2.E(), tlv_j2.E() / tlv_truthJet2.E())
+    h_mjj.Fill((tlv_j1 + tlv_j2).M())
 
 reader.close()
 
