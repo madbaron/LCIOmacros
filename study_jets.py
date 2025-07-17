@@ -60,8 +60,15 @@ for ievt, event in enumerate(reader):
     #Build the truth jets
     MCparticleCollection = event.getCollection('MCParticle')
 
-    out_quark1 = MCparticleCollection[1].getDaughters()[0]
-    out_quark2 = MCparticleCollection[1].getDaughters()[1]
+    out_quark1 = MCparticleCollection[0]
+    out_quark2 = MCparticleCollection[0]
+
+    #find first particle with 2 daughters
+    for mcparticle in MCparticleCollection:
+        if len(mcparticle.getDaughters()) == 2:
+            out_quark1 = mcparticle.getDaughters()[0]
+            out_quark2 = mcparticle.getDaughters()[1]  
+            break
 
     tlv_d1 = TLorentzVector()
     tlv_d2 = TLorentzVector()
