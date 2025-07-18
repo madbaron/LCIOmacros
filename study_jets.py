@@ -16,13 +16,14 @@ parser.add_option('-o', '--outFile', help='--outFile ntup_jets.root',
 
 # declare histograms
 h_mjj = TH1D('mjj', 'mjj', 100, 0, 1000)
+h_truth_mjj = TH1D('truth_mjj', 'truth_mjj', 100, 0, 1000)
 
 h_correction = TProfile2D('h_correction', 'h_correction',
                           20, 0, TMath.Pi(), 100, 0, 500, 0, 2,
                           's')
 
 # Histo list for writing to outputs
-histos_list = [h_mjj, h_correction]
+histos_list = [h_mjj, h_truth_mjj, h_correction]
 
 for histo in histos_list:
     histo.SetDirectory(0)
@@ -103,6 +104,7 @@ for ievt, event in enumerate(reader):
                 tlv_truthJet2 += tlv
 
     #print("Visible mjj", (tlv_truthJet1 + tlv_truthJet2).M())
+    h_truth_mjj.Fill((tlv_truthJet1 + tlv_truthJet2).M())
 
     tlv_j1 = TLorentzVector()
     tlv_j2 = TLorentzVector()
