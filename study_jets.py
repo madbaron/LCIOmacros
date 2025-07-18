@@ -21,12 +21,19 @@ arrBins_E = array('d', (0., 5., 10., 15., 20., 25., 30., 35.,
 h_mjj = TH1D('mjj', 'mjj', 100, 0, 1000)
 h_truth_mjj = TH1D('truth_mjj', 'truth_mjj', 100, 0, 1000)
 
-h_correction = TProfile2D('h_correction', 'h_correction',
+h_correction_visible = TProfile2D('h_vis', 'h_vis',
                           20, 0, TMath.Pi(), len(arrBins_E)-1, arrBins_E,
                           's')
+h_correction_total = TProfile2D('h_total', 'h_total',
+                          20, 0, TMath.Pi(), len(arrBins_E)-1, arrBins_E,
+                          's')
+h_correction_equalbins = TProfile2D('h_equalbins', 'h_equalbins',
+                          20, 0, TMath.Pi(), 20, 0., 200., 0., 2.,
+                          's')
+
 
 # Histo list for writing to outputs
-histos_list = [h_mjj, h_truth_mjj, h_correction]
+histos_list = [h_mjj, h_truth_mjj, h_correction_visible, h_correction_total, h_correction_equalbins]
 
 for histo in histos_list:
     histo.SetDirectory(0)
@@ -140,8 +147,15 @@ for ievt, event in enumerate(reader):
             tlv_j2 = tlv
             deltaR_j = deltaR
     
-    h_correction.Fill(tlv_j1.Theta(), tlv_truthJet1.E(), tlv_j1.E() / tlv_truthJet1.E())
-    h_correction.Fill(tlv_j2.Theta(), tlv_truthJet2.E(), tlv_j2.E() / tlv_truthJet2.E())
+    h_correction_visible.Fill(tlv_truthJet1.Theta(), tlv_truthJet1.E(), tlv_truthJet1.E() / tlv_j1.E())
+    h_correction_visible.Fill(tlv_truthJet2.Theta(), tlv_truthJet2.E(), tlv_truthJet2.E() / tlv_j2.E())
+    
+    h_correction_total.Fill(tlv_d1.Theta(), tlv_d1.E(), tlv_d1.E() / tlv_j1.E())
+    h_correction_total.Fill(tlv_d2.Theta(), tlv_d2.E(), tlv_d2.E() / tlv_j2.E())
+
+    h_correction_equalbins.Fill(tlv_truthJet1.Theta(), tlv_truthJet1.E(), tlv_truthJet1.E() / tlv_j1.E())
+    h_correction_equalbins.Fill(tlv_truthJet2.Theta(), tlv_truthJet2.E(), tlv_truthJet2.E() / tlv_j2.E())
+
     h_mjj.Fill((tlv_j1 + tlv_j2).M())
 
 reader.close()
