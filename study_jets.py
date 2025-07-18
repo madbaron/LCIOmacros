@@ -14,12 +14,15 @@ parser.add_option('-o', '--outFile', help='--outFile ntup_jets.root',
                   type=str, default='ntup_jets.root')
 (options, args) = parser.parse_args()
 
+arrBins_E = array('d', (0., 5., 10., 15., 20., 25., 30., 35.,
+                         40., 45., 50., 75., 100., 250., 500.))
+
 # declare histograms
 h_mjj = TH1D('mjj', 'mjj', 100, 0, 1000)
 h_truth_mjj = TH1D('truth_mjj', 'truth_mjj', 100, 0, 1000)
 
 h_correction = TProfile2D('h_correction', 'h_correction',
-                          20, 0, TMath.Pi(), 100, 0, 500, 0, 2,
+                          20, 0, TMath.Pi(), len(arrBins_E)-1, arrBins_E,
                           's')
 
 # Histo list for writing to outputs
