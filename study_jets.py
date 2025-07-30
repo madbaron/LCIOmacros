@@ -18,8 +18,8 @@ arrBins_E = array('d', (0., 5., 10., 15., 20., 25., 30., 35.,
                          40., 45., 50., 75., 100., 250., 500.))
 
 # declare histograms
-h_mjj = TH1D('mjj', 'mjj', 100, 50, 150)
-h_truth_mjj = TH1D('truth_mjj', 'truth_mjj', 100, 50, 150)
+h_mjj = TH1D('mjj', 'mjj', 150, 0, 150)
+h_truth_mjj = TH1D('truth_mjj', 'truth_mjj', 150, 0, 150)
 
 h_correction_visible = TProfile2D('h_vis', 'h_vis',
                           20, 0, TMath.Pi(), len(arrBins_E)-1, arrBins_E,
