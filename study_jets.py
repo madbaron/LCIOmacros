@@ -43,7 +43,7 @@ def get_calibrated_tlv(particle):
     if particle.getType() == 22:
         E = E*1.05  # Example calibration for photons
     elif particle.getType() == 2112:
-        E = E*1.5
+        E = E*1.2
     else:
         pass
 
