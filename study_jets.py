@@ -60,13 +60,18 @@ def get_calibrated_tlv(particle):
         correction = calibMap_photons.GetBinContent(calibMap_photons.FindBin(theta, E_cap))
     elif particle.getType() == 2112:
         if E_cap > 250.:
-            E_cap = 249.        
+            E_cap = 249.
+        if E_cap < 10.:
+            E_cap = 10.1        
         correction = calibMap_neutrons.GetBinContent(calibMap_neutrons.FindBin(theta, E_cap))
     else:
         correction = 1.0
 
     if correction < 0.01:
         correction = 1.0
+
+    print("Particle type: {}, theta: {:.2f}, E: {:.2f}, correction: {:.2f}".format(
+        particle.getType(), theta, E, correction))
 
     E = E*correction
     tlv.SetPxPyPzE(dp3[0], dp3[1], dp3[2], E)
@@ -154,7 +159,7 @@ for ievt, event in enumerate(reader):
 
     h_mjj.Fill((tlv_j1 + tlv_j2).M())
 
-    if (tlv_j1 + tlv_j2).Perp() > 150.:
+    if (tlv_j1 + tlv_j2).Perp() > 200.:
         h_mjj_boost.Fill((tlv_j1 + tlv_j2).M())
 
 reader.close()
