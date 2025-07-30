@@ -45,22 +45,35 @@ calibMap_neutrons = calibFile_neutrons.Get("calib_2d")
 
 def get_calibrated_tlv(particle):
     tlv = TLorentzVector()
-    theta = tlv.Theta()
     E = particle.getEnergy()
-    E_cap = E
     dp3 = particle.getMomentum()
+    tlv.SetPxPyPzE(dp3[0], dp3[1], dp3[2], E)
+
+    theta = tlv.Theta()
+    E_cap = E
+    correction = 1.0
 
     if particle.getType() == 22:
         if E_cap > 1000.:
             E_cap = 999.
-        E = E*calibMap_photons.GetBinContent(calibMap_photons.FindBin(theta, E_cap))
+        if E_cap < 30.:
+            E_cap = 30.
+
+        correction = calibMap_photons.GetBinContent(calibMap_photons.FindBin(theta, E_cap))
     elif particle.getType() == 2112:
         if E_cap > 250.:
             E_cap = 249.
-        E = E*calibMap_neutrons.GetBinContent(calibMap_neutrons.FindBin(theta, E_cap))
+        if E_cap < 10.:
+            E_cap = 10.
+        
+        correction = calibMap_neutrons.GetBinContent(calibMap_neutrons.FindBin(theta, E_cap))
     else:
-        pass
+        correction = 1.0
 
+    if correction < 0.01:
+        correction = 1.0
+
+    E = E*correction
     tlv.SetPxPyPzE(dp3[0], dp3[1], dp3[2], E)
 
     return tlv
