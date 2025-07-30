@@ -28,12 +28,29 @@ h_correction_equalbins = TProfile2D('h_equalbins', 'h_equalbins',
                           20, 0, TMath.Pi(), 20, 0., 200., 0., 2.,
                           's')
 
-
 # Histo list for writing to outputs
 histos_list = [h_mjj, h_truth_mjj, h_correction_visible, h_correction_equalbins]
 
 for histo in histos_list:
     histo.SetDirectory(0)
+
+
+def get_calibrated_tlv(particle):
+    tlv = TLorentzVector()
+    E = particle.getEnergy()
+    dp3 = particle.getMomentum()
+
+    if particle.getType() == 22:
+        E = E*1.05  # Example calibration for photons
+    elif particle.getType() == 2112:
+        E = E*1.5
+    else:
+        pass
+
+    tlv.SetPxPyPzE(dp3[0], dp3[1], dp3[2], E)
+
+    return tlv
+
 
 # create a reader and open an LCIO file
 reader = IOIMPL.LCFactory.getInstance().createLCReader()
@@ -62,8 +79,8 @@ for ievt, event in enumerate(reader):
 
     h_truth_mjj.Fill((tlv_truthJet1 + tlv_truthJet2).M())
 
-    tlv_j1 = TLorentzVector()
-    tlv_j2 = TLorentzVector()
+    ij1 = -1
+    ij2 = -1
 
     jetCollection = event.getCollection('ValenciaJetOut')
     if len(jetCollection) < 2:
@@ -71,7 +88,7 @@ for ievt, event in enumerate(reader):
         continue
 
     deltaR_j = 99
-    for jet in jetCollection:
+    for ijet, jet in enumerate(jetCollection):
         dp3 = jet.getMomentum()
 
         tlv = TLorentzVector()
@@ -80,11 +97,11 @@ for ievt, event in enumerate(reader):
         deltaR = tlv.DeltaR(tlv_truthJet1)
 
         if deltaR < deltaR_j:
-            tlv_j1 = tlv
+            ij1 = ijet
             deltaR_j = deltaR
 
     deltaR_j = 99
-    for jet in jetCollection:
+    for ijet, jet in enumerate(jetCollection):
         dp3 = jet.getMomentum()
 
         tlv = TLorentzVector()
@@ -93,9 +110,20 @@ for ievt, event in enumerate(reader):
         deltaR = tlv.DeltaR(tlv_truthJet2)
 
         if deltaR < deltaR_j:
-            tlv_j2 = tlv
+            ij2 = ijet
             deltaR_j = deltaR
     
+    tlv_j1 = TLorentzVector()
+    tlv_j2 = TLorentzVector()
+
+    jet1 = jetCollection[ij1]
+    for constituent in jet1.getParticles():
+        tlv_j1 += get_calibrated_tlv(constituent)
+
+    jet2 = jetCollection[ij2]
+    for constituent in jet2.getParticles():
+        tlv_j2 += get_calibrated_tlv(constituent)
+
     h_correction_visible.Fill(tlv_truthJet1.Theta(), tlv_truthJet1.E(), tlv_truthJet1.E() / tlv_j1.E())
     h_correction_visible.Fill(tlv_truthJet2.Theta(), tlv_truthJet2.E(), tlv_truthJet2.E() / tlv_j2.E())
 
