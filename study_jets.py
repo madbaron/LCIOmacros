@@ -20,7 +20,7 @@ parser.add_option('-j', '--jetCalibFile', help='--jetCalibFile ResponseMap_reco_
                   type=str, default='ResponseMap_reco_jets_v5_noBIB.root')
 (options, args) = parser.parse_args()
 
-arrBins_E = array('d', (0., 5., 10., 15., 20., 25., 30., 35.,
+arrBins_pT = array('d', (0., 5., 10., 15., 20., 25., 30., 35.,
                          40., 45., 50., 75., 100., 250., 500.))
 
 # declare histograms
@@ -29,7 +29,7 @@ h_mjj_boost = TH1D('mjj_boost', 'mjj_boost', 150, 0, 150)
 h_truth_mjj = TH1D('truth_mjj', 'truth_mjj', 150, 0, 150)
 
 h_correction_visible = TProfile2D('h_vis', 'h_vis',
-                          20, 0, TMath.Pi(), len(arrBins_E)-1, arrBins_E,
+                          20, 0, TMath.Pi(), len(arrBins_pT)-1, arrBins_pT,
                           's')
 h_correction_equalbins = TProfile2D('h_equalbins', 'h_equalbins',
                           20, 0, TMath.Pi(), 20, 0., 200., 0., 2.,
@@ -81,17 +81,16 @@ def get_calibrated_tlv(particle):
 
 def get_calibrated_jet(jet_tlv):
 
-    E = jet_tlv.E()
+    pT = jet_tlv.Perp()
     theta = jet_tlv.Theta()
     correction = 1.0
-    E_cap = E
-    if E_cap > 500.:
-        E_cap = 499.
+    if pT > 500.:
+        pT = 499.
 
-    correction = calibMap_jets.GetBinContent(calibMap_jets.FindBin(theta, E_cap))
+    correction = calibMap_jets.GetBinContent(calibMap_jets.FindBin(theta, pT))
 
     tlv = TLorentzVector()
-    tlv.SetPxPyPzE(jet_tlv.Px(), jet_tlv.Py(), jet_tlv.Pz(), E / correction)
+    tlv.SetPxPyPzE(jet_tlv.Px(), jet_tlv.Py(), jet_tlv.Pz(), jet_tlv.E() * correction)
 
     return tlv
 
@@ -167,11 +166,11 @@ for ievt, event in enumerate(reader):
     for constituent in jet2.getParticles():
         tlv_j2 += get_calibrated_tlv(constituent)
 
-    h_correction_visible.Fill(tlv_j1.Theta(), tlv_j1.E(), tlv_truthJet1.E() / tlv_j1.E())
-    h_correction_visible.Fill(tlv_j2.Theta(), tlv_j2.E(), tlv_truthJet2.E() / tlv_j2.E())
+    h_correction_visible.Fill(tlv_j1.Theta(), tlv_j1.Perp(), tlv_truthJet1.E() / tlv_j1.E())
+    h_correction_visible.Fill(tlv_j2.Theta(), tlv_j2.Perp(), tlv_truthJet2.E() / tlv_j2.E())
 
-    h_correction_equalbins.Fill(tlv_truthJet1.Theta(), tlv_truthJet1.E(), tlv_truthJet1.E() / tlv_j1.E())
-    h_correction_equalbins.Fill(tlv_truthJet2.Theta(), tlv_truthJet2.E(), tlv_truthJet2.E() / tlv_j2.E())
+    h_correction_equalbins.Fill(tlv_truthJet1.Theta(), tlv_truthJet1.Perp(), tlv_truthJet1.E() / tlv_j1.E())
+    h_correction_equalbins.Fill(tlv_truthJet2.Theta(), tlv_truthJet2.Perp(), tlv_truthJet2.E() / tlv_j2.E())
 
     h_mjj.Fill((get_calibrated_jet(tlv_j1) + get_calibrated_jet(tlv_j2)).M())
 
