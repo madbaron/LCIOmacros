@@ -56,16 +56,10 @@ def get_calibrated_tlv(particle):
     if particle.getType() == 22:
         if E_cap > 1000.:
             E_cap = 999.
-        if E_cap < 30.:
-            E_cap = 30.
-
         correction = calibMap_photons.GetBinContent(calibMap_photons.FindBin(theta, E_cap))
     elif particle.getType() == 2112:
         if E_cap > 250.:
-            E_cap = 249.
-        if E_cap < 10.:
-            E_cap = 10.
-        
+            E_cap = 249.        
         correction = calibMap_neutrons.GetBinContent(calibMap_neutrons.FindBin(theta, E_cap))
     else:
         correction = 1.0
