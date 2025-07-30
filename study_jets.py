@@ -12,6 +12,10 @@ parser.add_option('-i', '--inFile', help='--inFile Output_REC.slcio',
                   type=str, default='Output_REC.slcio')
 parser.add_option('-o', '--outFile', help='--outFile ntup_jets.root',
                   type=str, default='ntup_jets.root')
+parser.add_option('-p', '--photonCalibFile', help='--photonCalibFile ResponseMap_reco_photons_v5_noBIB.root',
+                  type=str, default='ResponseMap_reco_photons_v5_noBIB.root')
+parser.add_option('-n', '--neutronCalibFile', help='--neutronCalibFile ResponseMap_reco_neutrons_v5_noBIB.root',
+                  type=str, default='ResponseMap_reco_neutrons_v5_noBIB.root')
 (options, args) = parser.parse_args()
 
 arrBins_E = array('d', (0., 5., 10., 15., 20., 25., 30., 35.,
@@ -34,16 +38,26 @@ histos_list = [h_mjj, h_truth_mjj, h_correction_visible, h_correction_equalbins]
 for histo in histos_list:
     histo.SetDirectory(0)
 
+calibFile_photons = TFile(options.photonCalibFile, "READ")
+calibMap_photons = calibFile_photons.Get("calib_2d")
+calibFile_neutrons = TFile(options.neutronCalibFile, "READ")
+calibMap_neutrons = calibFile_neutrons.Get("calib_2d")
 
 def get_calibrated_tlv(particle):
     tlv = TLorentzVector()
+    theta = tlv.Theta()
     E = particle.getEnergy()
+    E_cap = E
     dp3 = particle.getMomentum()
 
     if particle.getType() == 22:
-        E = E*1.05  # Example calibration for photons
+        if E_cap > 1000.:
+            E_cap = 999.
+        E = E*calibMap_photons.GetBinContent(calibMap_photons.FindBin(theta, E_cap))
     elif particle.getType() == 2112:
-        E = E*1.2
+        if E_cap > 250.:
+            E_cap = 249.
+        E = E*calibMap_neutrons.GetBinContent(calibMap_neutrons.FindBin(theta, E_cap))
     else:
         pass
 
