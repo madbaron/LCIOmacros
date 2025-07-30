@@ -91,7 +91,7 @@ def get_calibrated_jet(jet_tlv):
     correction = calibMap_jets.GetBinContent(calibMap_jets.FindBin(theta, E_cap))
 
     tlv = TLorentzVector()
-    tlv.SetPxPyPzE(jet_tlv.Px(), jet_tlv.Py(), jet_tlv.Pz(), E * correction)
+    tlv.SetPxPyPzE(jet_tlv.Px(), jet_tlv.Py(), jet_tlv.Pz(), E / correction)
 
     return tlv
 
