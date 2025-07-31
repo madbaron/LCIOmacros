@@ -107,8 +107,8 @@ def get_calibrated_tlv(particle):
     if correction < 0.01:
         correction = 1.0
 
-    E = E*correction
-    tlv.SetPxPyPzE(dp3[0], dp3[1], dp3[2], E)
+    #compute the transverse momentum from the corrected energy
+    tlv.SetPxPyPzE(tlv.Px() * correction, tlv.Py() * correction, tlv.Pz() * correction, tlv.E() * correction)
 
     return tlv
 
@@ -121,9 +121,11 @@ def get_calibrated_jet(jet_tlv):
         pT = 499.
 
     correction = calibMap_jets.GetBinContent(calibMap_jets.FindBin(theta, pT))
+    if correction < 0.01:
+        correction = 1.0
 
     tlv = TLorentzVector()
-    tlv.SetPxPyPzE(jet_tlv.Px(), jet_tlv.Py(), jet_tlv.Pz(), jet_tlv.E() * correction)
+    tlv.SetPxPyPzE(jet_tlv.Px() * correction, jet_tlv.Py() * correction, jet_tlv.Pz() * correction, jet_tlv.E() * correction)
 
     return tlv
 
