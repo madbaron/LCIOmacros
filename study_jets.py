@@ -98,13 +98,13 @@ def get_calibrated_tlv(particle):
     elif particle.getType() == 2112:
         if E_cap > 250.:
             E_cap = 249.
-        if E_cap < 10.:
-            E_cap = 10.1        
         correction = calibMap_neutrons.GetBinContent(calibMap_neutrons.FindBin(theta, E_cap))
     else:
         correction = 1.0
 
     if correction < 0.01:
+        correction = 1.0
+    if correction > 10.0:
         correction = 1.0
 
     #compute the transverse momentum from the corrected energy
