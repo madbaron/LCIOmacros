@@ -166,11 +166,11 @@ for ievt, event in enumerate(reader):
     for constituent in jet2.getParticles():
         tlv_j2 += get_calibrated_tlv(constituent)
 
-    h_correction_visible.Fill(tlv_j1.Theta(), tlv_j1.Perp(), tlv_truthJet1.E() / tlv_j1.E())
-    h_correction_visible.Fill(tlv_j2.Theta(), tlv_j2.Perp(), tlv_truthJet2.E() / tlv_j2.E())
+    h_correction_visible.Fill(tlv_j1.Theta(), tlv_j1.Perp(), tlv_truthJet1.Perp() / tlv_j1.Perp())
+    h_correction_visible.Fill(tlv_j2.Theta(), tlv_j2.Perp(), tlv_truthJet2.Perp() / tlv_j2.Perp())
 
-    h_correction_equalbins.Fill(tlv_truthJet1.Theta(), tlv_truthJet1.Perp(), tlv_truthJet1.E() / tlv_j1.E())
-    h_correction_equalbins.Fill(tlv_truthJet2.Theta(), tlv_truthJet2.Perp(), tlv_truthJet2.E() / tlv_j2.E())
+    h_correction_equalbins.Fill(tlv_truthJet1.Theta(), tlv_truthJet1.Perp(), tlv_truthJet1.Perp() / tlv_j1.Perp())
+    h_correction_equalbins.Fill(tlv_truthJet2.Theta(), tlv_truthJet2.Perp(), tlv_truthJet2.Perp() / tlv_j2.Perp())
 
     h_mjj.Fill((get_calibrated_jet(tlv_j1) + get_calibrated_jet(tlv_j2)).M())
 
