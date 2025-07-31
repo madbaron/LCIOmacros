@@ -1,3 +1,4 @@
+from LCIOmacros.study_photons import E_truth
 from pyLCIO import IOIMPL
 from ROOT import TH1D, TFile, TLorentzVector, TProfile2D, TMath
 from math import *
@@ -40,6 +41,39 @@ histos_list = [h_mjj, h_mjj_boost, h_truth_mjj, h_correction_visible, h_correcti
 
 for histo in histos_list:
     histo.SetDirectory(0)
+
+#########################
+
+tree = TTree("jets_tree", "jets_tree")
+
+# create 1 dimensional float arrays as fill variables, in this way the float
+# array serves as a pointer which can be passed to the branch
+pt = array('d', [0])
+theta = array('d', [0])
+phi = array('d', [0])
+Evec = array('d', [0])
+pt_nocalib = array('d', [0])
+theta_nocalib = array('d', [0])
+phi_nocalib = array('d', [0])
+Evec_nocalib = array('d', [0])
+pt_truth = array('d', [0])
+phi_truth = array('d', [0])
+theta_truth = array('d', [0])
+Evec_truth = array('d', [0])
+
+# create the branches and assign the fill-variables to them as doubles (D)
+tree.Branch("pT",  pt,  'var/D')
+tree.Branch("theta", theta, 'var/D')
+tree.Branch("phi", phi, 'var/D')
+tree.Branch("E", Evec, 'var/D')
+tree.Branch("pT_nocalib",  pt_nocalib,  'var/D')
+tree.Branch("theta_nocalib", theta_nocalib, 'var/D')
+tree.Branch("phi_nocalib", phi_nocalib, 'var/D')
+tree.Branch("E_nocalib", Evec_nocalib, 'var/D')
+tree.Branch("pT_truth",  pt_truth,  'var/D')
+tree.Branch("theta_truth", theta_truth, 'var/D')
+tree.Branch("phi_truth", phi_truth, 'var/D')
+tree.Branch("E_truth", Evec_truth, 'var/D')
 
 calibFile_photons = TFile(options.photonCalibFile, "READ")
 calibMap_photons = calibFile_photons.Get("calib_2d")
@@ -174,6 +208,35 @@ for ievt, event in enumerate(reader):
 
     h_mjj.Fill((get_calibrated_jet(tlv_j1) + get_calibrated_jet(tlv_j2)).M())
 
+    # fill the tree for first jet
+    pt[0] = get_calibrated_jet(tlv_j1).Perp()
+    theta[0] = get_calibrated_jet(tlv_j1).Theta()
+    phi[0] = get_calibrated_jet(tlv_j1).Phi()
+    Evec[0] = get_calibrated_jet(tlv_j1).E()
+    pt_nocalib[0] = tlv_j1.Perp()
+    theta_nocalib[0] = tlv_j1.Theta()
+    phi_nocalib[0] = tlv_j1.Phi()
+    Evec_nocalib[0] = tlv_j1.E()
+    pt_truth[0] = tlv_truthJet1.Perp()
+    theta_truth[0] = tlv_truthJet1.Theta()
+    phi_truth[0] = tlv_truthJet1.Phi()
+    Evec_truth[0] = tlv_truthJet1.E()
+    tree.Fill()
+    # fill the tree for second jet
+    pt[0] = get_calibrated_jet(tlv_j2).Perp()
+    theta[0] = get_calibrated_jet(tlv_j2).Theta()
+    phi[0] = get_calibrated_jet(tlv_j2).Phi()
+    Evec[0] = get_calibrated_jet(tlv_j2).E()
+    pt_nocalib[0] = tlv_j2.Perp()
+    theta_nocalib[0] = tlv_j2.Theta()
+    phi_nocalib[0] = tlv_j2.Phi()
+    Evec_nocalib[0] = tlv_j2.E()
+    pt_truth[0] = tlv_truthJet2.Perp()
+    theta_truth[0] = tlv_truthJet2.Theta()
+    phi_truth[0] = tlv_truthJet2.Phi()
+    Evec_truth[0] = tlv_truthJet2.E()
+    tree.Fill()
+
     if (get_calibrated_jet(tlv_j1) + get_calibrated_jet(tlv_j2)).Perp() > 200.:
         h_mjj_boost.Fill((get_calibrated_jet(tlv_j1) + get_calibrated_jet(tlv_j2)).M())
 
@@ -183,4 +246,5 @@ reader.close()
 output_file = TFile(options.outFile, 'RECREATE')
 for histo in histos_list:
     histo.Write()
+tree.Write()
 output_file.Close()
