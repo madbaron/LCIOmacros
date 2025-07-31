@@ -1,6 +1,5 @@
-from LCIOmacros.study_photons import E_truth
 from pyLCIO import IOIMPL
-from ROOT import TH1D, TFile, TLorentzVector, TProfile2D, TMath
+from ROOT import TH1D, TFile, TLorentzVector, TProfile2D, TMath, TTree
 from math import *
 from optparse import OptionParser
 from array import array
