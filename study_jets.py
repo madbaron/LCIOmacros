@@ -213,6 +213,9 @@ for ievt, event in enumerate(reader):
 
         deltaR = tlv.DeltaR(tlv_truthJet2)
 
+        if ijet == ij1:
+            continue
+
         if deltaR < deltaR_j:
             ij2 = ijet
             deltaR_j = deltaR
