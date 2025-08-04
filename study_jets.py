@@ -293,4 +293,5 @@ output_file = TFile(options.outFile, 'RECREATE')
 for histo in histos_list:
     histo.Write()
 tree.Write()
+dijet_tree.Write()
 output_file.Close()
