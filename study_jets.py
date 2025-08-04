@@ -74,6 +74,33 @@ tree.Branch("theta_truth", theta_truth, 'var/D')
 tree.Branch("phi_truth", phi_truth, 'var/D')
 tree.Branch("E_truth", Evec_truth, 'var/D')
 
+dijet_tree = TTree("dijet_tree", "dijet_tree")
+
+# create 1 dimensional float arrays as fill variables, in this way the float
+# array serves as a pointer which can be passed to the branch
+pt1 = array('d', [0])
+theta1 = array('d', [0])
+phi1 = array('d', [0])
+Evec1 = array('d', [0])
+n_charged1 = array('i', [0])
+pt2 = array('d', [0])
+theta2 = array('d', [0])
+phi2 = array('d', [0])
+Evec2 = array('d', [0])
+n_charged2 = array('i', [0])
+
+# create the branches and assign the fill-variables to them as doubles (D)
+dijet_tree.Branch("pT1",  pt1,  'var/D')
+dijet_tree.Branch("theta1", theta1, 'var/D')
+dijet_tree.Branch("phi1", phi1, 'var/D')
+dijet_tree.Branch("E1", Evec1, 'var/D')
+dijet_tree.Branch("nCharged1", n_charged1, 'var/I')
+dijet_tree.Branch("pT2",  pt2,  'var/D')
+dijet_tree.Branch("theta2", theta2, 'var/D')
+dijet_tree.Branch("phi2", phi2, 'var/D')
+dijet_tree.Branch("E2", Evec2, 'var/D')
+dijet_tree.Branch("nCharged2", n_charged2, 'var/I')
+
 calibFile_photons = TFile(options.photonCalibFile, "READ")
 calibMap_photons = calibFile_photons.Get("calib_2d")
 calibFile_neutrons = TFile(options.neutronCalibFile, "READ")
@@ -193,13 +220,20 @@ for ievt, event in enumerate(reader):
     tlv_j1 = TLorentzVector()
     tlv_j2 = TLorentzVector()
 
+    n_charged_constituent1 = 0
+    n_charged_constituent2 = 0
+
     jet1 = jetCollection[ij1]
     for constituent in jet1.getParticles():
         tlv_j1 += get_calibrated_tlv(constituent)
+        if fabs(constituent.getCharge()) > 0.:
+            n_charged_constituent1 += 1
 
     jet2 = jetCollection[ij2]
     for constituent in jet2.getParticles():
         tlv_j2 += get_calibrated_tlv(constituent)
+        if fabs(constituent.getCharge()) > 0.:
+            n_charged_constituent2 += 1
 
     h_correction_visible.Fill(tlv_j1.Theta(), tlv_j1.Perp(), tlv_truthJet1.Perp() / tlv_j1.Perp())
     h_correction_visible.Fill(tlv_j2.Theta(), tlv_j2.Perp(), tlv_truthJet2.Perp() / tlv_j2.Perp())
@@ -238,6 +272,19 @@ for ievt, event in enumerate(reader):
     phi_truth[0] = tlv_truthJet2.Phi()
     Evec_truth[0] = tlv_truthJet2.E()
     tree.Fill()
+
+    # fill the dijet tree
+    pt1[0] = get_calibrated_jet(tlv_j1).Perp()
+    theta1[0] = get_calibrated_jet(tlv_j1).Theta()
+    phi1[0] = get_calibrated_jet(tlv_j1).Phi()
+    Evec1[0] = get_calibrated_jet(tlv_j1).E()
+    n_charged1[0] = n_charged_constituent1
+    pt2[0] = get_calibrated_jet(tlv_j2).Perp()
+    theta2[0] = get_calibrated_jet(tlv_j2).Theta()
+    phi2[0] = get_calibrated_jet(tlv_j2).Phi()
+    Evec2[0] = get_calibrated_jet(tlv_j2).E()
+    n_charged2[0] = n_charged_constituent2
+    dijet_tree.Fill()
 
 reader.close()
 
