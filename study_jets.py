@@ -277,15 +277,15 @@ for ievt, event in enumerate(reader):
     tree.Fill()
 
     # fill the dijet tree
-    pt1[0] = get_calibrated_jet(tlv_j1).Perp()
-    theta1[0] = get_calibrated_jet(tlv_j1).Theta()
-    phi1[0] = get_calibrated_jet(tlv_j1).Phi()
-    mass1[0] = get_calibrated_jet(tlv_j1).M()
+    pt1[0] = tlv_j1.Perp()
+    theta1[0] = tlv_j1.Theta()
+    phi1[0] = tlv_j1.Phi()
+    mass1[0] = tlv_j1.M()
     n_charged1[0] = n_charged_constituent1
-    pt2[0] = get_calibrated_jet(tlv_j2).Perp()
-    theta2[0] = get_calibrated_jet(tlv_j2).Theta()
-    phi2[0] = get_calibrated_jet(tlv_j2).Phi()
-    mass2[0] = get_calibrated_jet(tlv_j2).M()
+    pt2[0] = tlv_j2.Perp()
+    theta2[0] = tlv_j2.Theta()
+    phi2[0] = tlv_j2.Phi()
+    mass2[0] = tlv_j2.M()
     n_charged2[0] = n_charged_constituent2
     dijet_tree.Fill()
 
