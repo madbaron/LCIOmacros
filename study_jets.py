@@ -25,7 +25,7 @@ arrBins_pT = array('d', (0., 5., 10., 15., 20., 25., 30., 35.,
 
 # declare histograms
 h_mjj = TH1D('mjj', 'mjj', 150, 0, 150)
-h_mjj_boost = TH1D('mjj_boost', 'mjj_boost', 150, 0, 150)
+h_mjj_uncorrected = TH1D('mjj_uncorrected', 'mjj_uncorrected', 150, 0, 150)
 h_truth_mjj = TH1D('truth_mjj', 'truth_mjj', 150, 0, 150)
 
 h_correction_visible = TProfile2D('h_vis', 'h_vis',
@@ -36,7 +36,7 @@ h_correction_equalbins = TProfile2D('h_equalbins', 'h_equalbins',
                           's')
 
 # Histo list for writing to outputs
-histos_list = [h_mjj, h_mjj_boost, h_truth_mjj, h_correction_visible, h_correction_equalbins]
+histos_list = [h_mjj, h_mjj_uncorrected, h_truth_mjj, h_correction_visible, h_correction_equalbins]
 
 for histo in histos_list:
     histo.SetDirectory(0)
@@ -207,6 +207,7 @@ for ievt, event in enumerate(reader):
     h_correction_equalbins.Fill(tlv_truthJet1.Theta(), tlv_truthJet1.Perp(), tlv_truthJet1.Perp() / tlv_j1.Perp())
     h_correction_equalbins.Fill(tlv_truthJet2.Theta(), tlv_truthJet2.Perp(), tlv_truthJet2.Perp() / tlv_j2.Perp())
 
+    h_mjj_uncorrected.Fill((tlv_j1 + tlv_j2).M())
     h_mjj.Fill((get_calibrated_jet(tlv_j1) + get_calibrated_jet(tlv_j2)).M())
 
     # fill the tree for first jet
@@ -237,9 +238,6 @@ for ievt, event in enumerate(reader):
     phi_truth[0] = tlv_truthJet2.Phi()
     Evec_truth[0] = tlv_truthJet2.E()
     tree.Fill()
-
-    if (get_calibrated_jet(tlv_j1) + get_calibrated_jet(tlv_j2)).Perp() > 200.:
-        h_mjj_boost.Fill((get_calibrated_jet(tlv_j1) + get_calibrated_jet(tlv_j2)).M())
 
 reader.close()
 
